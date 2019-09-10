@@ -1,0 +1,45 @@
+---
+title: "Stats 506, F19, Problem Set X"
+author: "Your Name, email@umich.edu"
+date: "`r format.Date(Sys.Date(), '%B %d, %Y')`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+# 80: --------------------------------------------------------------------------
+#! We generally don't need to see the code in the results document.
+knitr::opts_chunk$set(echo = FALSE)
+#! Make sure all chunks have a label. This one is labelled 'setup'.
+```
+
+## Question 1
+
+Use a first level header for each question.  
+
+### Part A
+Use lower level headers for thematic parts.
+
+### Part B
+Use numbered lists for specific parts of each question:
+
+ i. Response to part one. Maybe reference supporting tables and graphs.
+ i. Response to part two.
+
+\pagebreak
+
+## Question 2: Including Plots
+
+Please start each question on a new page.
+
+```{r pressure, echo=FALSE, fig.height=4, fig.cap=cap}
+# 80: --------------------------------------------------------------------------
+#! Use `paste` to construct captions while respecting the 80 char limit.
+cap = paste0(
+ "**Figure 1.** *Title.* All figures and tables should be numbered, titled ",
+ "and have a descriptive caption."
+)
+
+plot(pressure)
+```
+
+
