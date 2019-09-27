@@ -2,7 +2,12 @@
 
 ### Solutions
 
-No solutions have been posted yet.
+Solutions to problem set 1 are in the `ps1` folder. There you will find:
+
+  1. `ps1_q1.sh` - a shell script answering question 1
+  1. `cutnames.sh` - a shell program answering question 2 
+  1. `ps1_q3.R` - an R script with solutions to question 3
+  1. `ps1_solutions_pdf.Rmd` - the Rmd file used to produce the pdf version of the solution document.
 
 ### Data sets
 
