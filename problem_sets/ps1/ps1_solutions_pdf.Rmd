@@ -1,0 +1,62 @@
+---
+title: "Problem Set 1, Solutions"
+author: "Stats 506, F19"
+date: "`r format( Sys.Date(), '%B %d, %Y')`"
+output: pdf_document
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+Example solutions for the first problem set are below. The
+source file for this document and underlying scripts can all be found 
+at the course git repo: https://github.com/jbhender/Stats506_F19/.
+
+## Problem 1
+Here is the solution text for `ps1_q1.sh`. See the `stats506_F19` repo for an executable version.
+
+```{r ps1_q1, results = 'asis'}
+cat('```bash\n')
+writeLines(readLines('./ps1_q1.sh'))
+cat('```')
+```
+
+\pagebreak
+
+## Problem 2
+The text of the script is below. See the `stats506_F19` repo for an executable 
+version `cutnames.sh`
+
+```{r cutnames, results = 'asis'}
+cat('```bash\n')
+writeLines(readLines('./cutnames.sh'))
+cat('```')
+```
+
+\pagebreak
+
+## Problem 3
+
+### Parts a, b, c, and d
+Below is the code form `ps1_q3.R` answering parts a-d.
+```{r q3_rfuncs, results = 'asis'}
+cat('```R\n')
+writeLines( readLines('./ps1_q3.R'))
+cat('```\n')
+```
+
+### Part e
+
+Here are the measures computed on the test data,
+presented as a nicely formatted table.
+
+```{r test_measures, echo = 'TRUE', message = FALSE}
+source('./ps1_q3.R')
+cap = 
+ '*Measures of curvature computed from the "test" trajectories.*'
+knitr::kable(test_meas, digits = 1, col.names = cn, caption = cap)
+```
+
+
