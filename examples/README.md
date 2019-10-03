@@ -17,3 +17,6 @@
    the correlation coefficient between a target variable "yvec" and each of a
    collection "xmat" of others.
 
+1. [secret_class.R](./secret_class.R): S3 method dispatch, from Ch 13 in 
+   advanced R.
+   
