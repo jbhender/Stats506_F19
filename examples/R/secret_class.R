@@ -40,7 +40,7 @@ print.secret( x[1] )
 `[.secret` = function(x, i){
   new_secret( NextMethod() )
 }
-x[1]
+x[3]
 print( x[1] )
 print.secret( x[1] )
 
