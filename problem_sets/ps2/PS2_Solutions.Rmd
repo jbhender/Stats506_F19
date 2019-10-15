@@ -1,0 +1,153 @@
+---
+title: "Problem Set 2, Solutions"
+author: "Stats 506, F19"
+date: "10/14/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r run_scripts, include = FALSE}
+source('./ps2_q1.R')
+source('./ps2_q2.R')
+```
+
+## About
+
+In the solutions below, we focus on the answers to specific content questions.
+For code and data manipulations please see the corresponding R script at the
+course git [repo](https://github.com/jbhender/Stats506_F19/). 
+
+## Question 1
+
+In this question, we use the 2015 RECS data to answer questions about home
+heating behavior. 
+
+### (a) What is the national average home temperature at night in winter, among homes that use space heating?
+
+The national average home temperature at night, in winter, among homes that use space heating is `r str_temp_night` °F.
+
+### (b) Space heating fuel used, by division and urban type. 
+
+```{r q1b_table, fig.cap = cap}
+fuel_types_wide = rename(fuel_types_wide, 
+                         Division = division, 
+                         `Urban Type` = urban)
+DT::datatable( fuel_types_wide  )
+cap = paste0(
+"**Table 1.** *Percents of home using different types of ",
+"space heating fuels.* Values are shown as percents with 95% confidence",
+"intervals in parentheses."
+)
+```
+
+### (c) Comparing day and night temperatures, by division and urban type.
+
+```{r q1c_figure, fig.cap = cap}
+temps %>%
+  ungroup() %>%
+  mutate( division = factor(division, levels = div_order),
+          `Temperature Type` = type
+  ) %>%
+  ggplot( aes(y = est, x = division, color = `Temperature Type`, 
+              group = type) ) +
+  geom_point( position = position_dodge(width = .5), alpha = 0.5 ) +
+  geom_errorbar( aes(ymin = lwr, ymax = upr), alpha = 0.5, 
+                 position = position_dodge(width = .5)
+  ) + 
+  coord_flip() +
+  facet_wrap(~urban) + 
+  theme_bw() +
+  scale_color_manual( values = c('goldenrod', 'darkorange', 'black')) +
+  ylab( expression('Temperature ' (degree*'F')) ) +
+  ylim( c(60, 75)) +
+  xlab('')
+
+cap = paste0(
+"**Figure 1.** *Average household temperatures in winter.* This plot ",
+"compare winter home temperatures of three types by divison and urban ", 
+"type. Generally, temperatures are warmest during the day when someone is ",
+"home, cooler at night, and coolest during the day with no one at home."
+)
+```
+
+### (d) National, median differences between day and night temperatures by heating equipment behavior 
+
+```{r q1d_plot, fig.cap = cap}
+temp_se %>%
+  mutate( heat_type = factor( heat_behavior, hb_order, hb_labels) ) %>%
+  ggplot( aes( y = heat_type, x = est) ) +
+  geom_point() +
+  geom_errorbarh( aes(xmin = lwr, xmax = upr)) +
+  theme_bw() +
+  ylab("Heating Equipment Behavior") + 
+  xlab( 
+    expression("Median difference between day and night temperatures " (degree*'F'))
+  )
+cap = paste0(
+ "**Figure 2.** *Median national differences in day and night temperatures.* ",
+ "This figure shows the median national difference between household ",
+ "temperatures in winter during the day, with somoone home, and at night. The ",
+ "median differnce is largest, at 3 ºF, among those using a programmable ",
+ "thermostat.  The estimated standard errors are zero for the most commont ",
+ "behvarior types as the distribution of temperature differences has a ",
+ "large point mass near the median for these types."
+)
+```
+
+***
+
+## Problem 2
+In this question, we analyze (computer) mouse tracking experiments to show that 
+"atypical" examples of various animal species are associated with more 
+curvature on the path to the correct reponse. These curvature measures are a
+proxy for indecision or cognitive burden.  
+
+We analyze these data using linear mixed models with condition (typical vs
+atypical) as the sole covariate and random intercepts for subject and examplar
+to account for the repeated measurs nature of the data.  Subject level (random)
+intercepts help to account for subject-to-subject differences in curvature 
+irrespective of condition.  Similarly, exmemplar
+(random) intercepts help to account for the fact that exemplars are repeated 
+across subjects.
+
+Based on the results below, in this experiment the atypcial condition had
+the largest effect on the average absolute deviation measure which was nearly
+twice as large, on average, in the atypical condition.  However, comparing
+confidence intervals for the relative effects of condition on each curvature
+measure, the only statistically meaningful difference is between average absolute
+deviation and total distance.  
+
+```{r q2_plot, fig.cap = cap}
+ci_df %>%
+  arrange( est ) %>%
+  mutate( measure = factor(measure, levels = unique(measure) ) ) %>%
+  ggplot( aes( y = measure, x = est) ) +
+  geom_point() +
+  geom_errorbarh( aes(xmin = lwr, xmax = upr) ) + 
+  geom_vline( xintercept = 1, lty = 'dashed') + 
+  xlab('relative effect on curvature measure of an atypical exemplar') + 
+  ylab('') +
+  theme_bw()
+cap = paste(
+  "**Figure 3.** *Relative effect of atypical condition on each curvature measure.*"
+)
+```
+
+```{r q2_table}
+cap = paste(
+  "**Table 2.** *Model summaries.* This table shows the relative effect (with ",
+  "95% Wald confidence intervals) of the atypical condition on each of four ",    
+  "curvature measures. ",
+  "Standard deviations for each variance component - subjects, exemplar, and ",
+  "error - are also shown with 95% confidence intervals based on the profile ", 
+  "likelihood."
+)
+
+ci_df %>% 
+  select(measure:Error) %>% 
+  knitr::kable( caption = cap )
+```
+
