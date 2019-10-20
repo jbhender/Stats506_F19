@@ -1,0 +1,339 @@
+---
+title: "Problem Set 1, Solutions"
+author: "Stats 506, Fall 2018"
+date: "Due: Monday October 1, 5pm"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+The Rmarkdown file and all scripts used to create this document can be found on
+the [Stats506_F18](https://github.com/jbhender/Stats506_F18/) repository.
+
+## Question 1
+
+In this question you will use command line tools to answer question about the 2015 Residential Energy Consumption Survey (RECS 2015) [data set](https://www.eia.gov/consumption/residential/data/2015/index.php?view=microdata).
+
+### Part A [5 points; 2.5 each]
+
+In part A, your solution to each question should be a Linux "one-liner", i.e. a series of one or more commands connected by pipes "|". Please provide both your solution and the result. Your solution must be written in text so that it can be copied and pasted if needed.
+
+i. How many rows are there for region 3 in the RECS 2015 data set?
+
+```bash
+< recs2015_public_v3.csv cut -d, -f2 | grep -e "3" | wc -l
+```
+There are 2010 homes from region 3 in the data.
+
+ii. Write a one-liner to create a compressed data set containing only the variables:
+DOEID, NWEIGHT, and BRRWT1-BRRWT96. 
+
+We can find the locations of these fields by looking in the codebook.
+```bash
+< recs2015_public_v3.csv cut -d, -f 1,475-571 > recs2015_weights.csv \
+   && gzip recs2015_weights.csv
+```
+
+### Part B [10 points; 5 each]
+
+i. Write a Bash  `for` loop to count and print the number of observations within each region.
+
+*Solution:*
+```bash
+for r in `seq 4`
+do 
+ echo -n "$r: "
+ < recs2015_public_v3.csv cut -d, -f2 | grep -e $r | wc -l
+done
+```
+
+*Result:*
+```txt
+1: 794
+2: 1327
+3: 2010
+4: 1555
+```
+
+ii. Produce a file `region_division.txt` providing a sorted list showing unique combinations of values from `REGIONC` and `DIVISION`. Include the contents of that file in your solution. *Hint:* See `man uniq`. 
+
+*Solution:*
+```bash
+< recs2015_public_v3.csv head -1 | cut -d, -f2-3 > region_division.txt 
+< recs2015_public_v3.csv tail -n +2 | cut -d, -f2-3 | sort -t'"' -k4 -n | uniq >> region_division.txt
+```
+
+In this solution, the first line extracts the headers for the two columns of
+interest and writes them to `region_division.txt`. The second line removes the header row, extracts the columns of interest, sorts them and appends the unique combinations to our output file.
+
+*Result:*
+
+```txt
+"REGIONC","DIVISION"
+"1","1"
+"1","2"
+"2","3"
+"2","4"
+"3","5"
+"3","6"
+"3","7"
+"4","8"
+"4","9"
+"4","10"
+```
+
+\newpage
+
+## Question 2 [25 pts]
+
+In this question, you will use **R** to answer questions about flights originating
+in New York City, NY (NYC) in 2013 and 2014. Data for 2013 can be found in the
+`nycflights2013` **R** package. Data through October 2014 is available 
+[here](https://raw.githubusercontent.com/wiki/arunsrinivasan/flights/NYCflights14/flights14.csv). Your answers should be submitted as nicely formatted tables produced using Rmarkdown. 
+
+*Source code for solutions:*
+```{r ps1_q2_source, echo = TRUE, message=FALSE, warning = FALSE}
+source('./ps1_q2.R')
+```
+
+a. Which airlines were responsible for at least 1% of the flights departing any of the three NYC airports between January 1 and October 31, 2013? 
+
+*Solution:*
+```{r q2_a_table}
+cap = '**Table 1.** Airlines representing 1% of flights originating from the NYC area January - October, 2013.'
+top_carriers %>%
+  mutate( n = format(n, big.mark = ',') ) %>%
+  transmute( Airline,
+          `Carrier Code` = carrier,
+          Flights = format(n, big.mark = ','),
+          Percent = sprintf('%4.1f%%', p)
+          ) %>%
+  knitr::kable( cap = cap, align = 'r' )
+```
+
+b. Among the airlines from part "a", compare the percent of annual flights in the first 10 months of 2013 and the first 10 months of 2014. Your table
+should include: the airline name (not carrier code), nicely formatted n's (see `format()`),
+percents for each year with 95% CI, and change in percent with 95% CI.
+Which airlines showed the largest increase and decrease?  Why do some airlines show an increase
+in the percent of flights but a decrease in the number of flights?
+
+*Solution:* 
+```{r}
+cap = "**Table 2.** Top airlines serving NYC in 2013 and 2014. The table shows all airlines representing at least 1% of flights originating from NYC during January - October, 2013. Columns show total flights and percent of all flights for that period and the corresponding period from 2014. The final column shows the absolute change in each airline's share of all flights."
+
+cols = c('Airline', '2013, n', '2013, %', '2014, n', '2014, %',
+         'Change in flight share, %')
+
+top_carriers_13v14 %>%
+  select( name, n_2013, p_2013, n_2014, p_2014, d) %>%
+  knitr::kable(col.names = cols, caption = cap, align = 'r')
+```
+
+*Endeavor air has no 2014 flights originating from NYC in our data and consquently shows the largest decrease in flight share: from 5.4% in 2013 to 0% in 2014.  Delta's flight share increased 2.2% from 14.3% to 16.5%, significantly larger than the next largest increase of 1.4% by Jet Blue (z = `r round(z, 2)`; p = `r round(p, 2)`).*
+
+*Some airlines, such as United, increased their flight share despite a decrease 
+in the number of flights because there were fewer flights overall in the first
+ten months of 2014.*
+
+c. Among the three NYC airports, produce a table showing the 
+percent of flights each airline is responsible for. Limit the table to the airlines identified in part a and include confidence intervals for your estimates.
+Which airline is the largest carrier at each airport? 
+
+*Solution:*
+```{r}
+cap = '**Table 3.** Airline share of flights originating from
+each of three NYC area airports. Percentages represent all flights form January 2013 - October 2014.'
+
+carrier_origin %>% 
+   select( Airline = name,
+           `EWR share` = EWR,
+           `JFK share` = JFK,
+           `LGA share` = LGA
+   ) %>%
+  knitr::kable( caption = cap )
+```
+
+*United has the largest share of flights (40%) originating from EWR,
+Jet Blue (40%) from JFK, and Delta (22%) from LGA.*  
+
+\newpage
+## Question 3 [45 pts; 15 pts each] 
+
+In this question, you will use **R** to answer questions about the RECS 2015 data. You should read the section on computing standard errors available [here](https://www.eia.gov/consumption/residential/data/2015/pdf/microdata.pdf). For each question, produce a nicely formatted table and graph to support you answer.  In your tables and graphs please provide standard errors for all point estimates. 
+
+**Source code for solutions:**
+```{r ps1_q3_source, message = FALSE}
+source('./ps1_q3.R')
+```
+
+Within the source code, note the use of "gather" to create a 
+long-format set of weights, making it easy to vectorize the replicate
+weight computations. 
+
+a. What percent of homes have stucco construction as the *major outside wall material* within each division? Which division has the highest proportion? Which the lowest? 
+
+*Solution:*
+
+```{r q3a_table}
+caption = '**Table 4.** Proportion of homes with stucco construction within each census division in 2015. Estimates are based on the residential energy consumption survey.'
+
+p_stucco_tab = 
+  p_stucco %>%
+  arrange( desc(p_stucco) ) %>%
+  transmute( `Census Division` = division,
+             `% Stucco Homes (95% CI)` = sprintf('%4.1f%% (%4.1f, %4.1f)',
+                                                100*p_stucco, 100*lwr, 100*upr)
+  ) 
+
+p_stucco_tab %>%
+  knitr::kable( align = 'r', caption = cap)
+```
+
+```{r q3a_figure, fig.cap = cap}
+cap = '**Figure 1.** Estimated percent of homes within each census division with major wall type of stucco.'
+
+p_stucco %>% 
+  arrange( desc(p_stucco) ) %>%
+  mutate( Division = 
+            factor( as.character(division),  as.character(division) ) 
+  ) %>%
+  ggplot( aes( x = Division, y = 100*p_stucco) ) +
+  geom_col( fill = 'navy' ) +
+  geom_errorbar( aes( ymin = 100*lwr, ymax = 100*upr), 
+                  col = 'darkslategrey') +
+  theme_bw() +
+  ylab('% Stucco Homes') +
+  xlab('Census Division') +
+  theme( axis.text.x = element_text(size = 8, angle = 90))
+```
+
+*Solution:*
+
+*The Mountain South division has 64% (95% CI: 55-73%) of homes built with stucco. It is the only division in which more than half the homes are built with this material; it and the Pacific division are the only divisions with more than 25% stucco homes. The East South Central and East North Central divisions both have less than 1% estimated stucco homes but other divisions are comparably low within sampling uncertainty.*
+
+b. What is the average total electricity usage in kilowatt hours
+in each division? Answer the same question stratified by urban and rural status. 
+
+*Solution:*
+
+```{r q3b_table1}
+cap = '**Table 4.** Average annual electricity utilization by Census Division in kwh/home.'
+
+# Multiplier for 95% CI
+m = qnorm(.975)
+
+# Pretty printing
+pwc = function(x) format(round(x), big.mark = ',')
+
+kwh %>%
+  arrange( desc(est) ) %>%
+  transmute( 
+    `Census Division` = division,
+    `Average Electricity Usage, kwh/home (95% CI)` = 
+     sprintf('%s, (%s - %s)', pwc(est), pwc(est - m*se), pwc(est + m*se) )
+  ) %>%
+  knitr::kable( align = 'r', caption = cap)
+```
+
+```{r q3b_figure1, fig.cap = cap}
+cap = '**Figure 2.** Estimated average annual electricity usage in khw/home for
+each of 10 census divisions.'
+kwh %>% 
+  arrange( desc(est) ) %>%
+  mutate( div = factor(as.character(division), as.character(division) ) ) %>%
+  ggplot( aes(x = div, y = est) ) +
+  geom_point() +
+  geom_errorbar( aes(ymin = lwr, ymax = upr)) +
+  coord_flip() +
+  theme_bw() +
+  ylab('kwh/home') +
+  xlab('')
+```
+
+```{r q3b_table2, figure.cap = cap}
+cap = '**Table 5.** Average electricity utilization in kwh per home for urban and rural areas witihin each census division.'
+
+# Order by simple average usage
+kwh_div_urban = kwh_div_urban %>%
+  group_by(division) %>%
+  mutate(div_avg = mean(est)) %>%
+  ungroup() %>%
+  arrange( desc(div_avg) ) %>%
+  mutate( div = as.character(division), 
+          div = factor(div, levels = unique(div) )
+  ) 
+
+# Table
+kwh_div_urban %>%
+  ungroup() %>%
+  transmute( 
+    `Census Division` = div,
+    `Average Electricity Usage, kwh/home (95% CI)` = 
+     sprintf('%s, (%6s - %6s)', pwc(est), pwc(est - m*se), pwc(est + m*se)),
+    Rurality = ifelse(urban, 'Urban, kwh/home (95% CI)', 'Rural, kwh/home (95% CI)')
+  ) %>%
+  spread(Rurality, `Average Electricity Usage, kwh/home (95% CI)` ) %>%
+  knitr::kable( align  = 'r', cap = cap)
+```
+
+```{r q3b_figure3}
+cap = '**Figure 3.** Estimated average annual electricity usage in khw/home for
+rural and urban areas in each of 10 census divisions.'
+
+kwh_div_urban %>%
+  ungroup() %>%
+  mutate(
+    Rurality = ifelse(urban, 'Urban', 'Rural')
+  ) %>%
+  ggplot( aes(x = div, y = est, color = Rurality) ) +
+  geom_point( position = position_dodge(.5) ) +
+  geom_errorbar( aes(ymin = lwr, ymax = upr),
+                 position = position_dodge(.5)
+  ) +
+  scale_color_manual( values = c('navy', 'darkred')[2:1]) +
+  coord_flip() +
+  theme_bw() +
+  ylab('kwh/home') +
+  xlab('')
+```
+
+c. Which division has the largest disparity between urban and rural areas in terms of the proportion of homes with internet access?
+
+*Solution:*
+```{r q3c_table}
+cap = "**Table 6.** Urban and rural disparity in internet access for the ten US Census Division in 2015. "
+
+internet_disp %>%
+  arrange( desc(est) ) %>%
+  select( `Census Division` = division, 
+          `Urban Internet Access, % (95% CI)` = Urban,
+          `Rural Internet Access, % (95% CI)` = Rural, 
+          `Difference, % (95% CI)` = Diff) %>%
+  knitr::kable( align = 'r', caption = cap )
+```
+
+*In the Mountain South division there is an 18.5% disparity between Urban and Rural internet access. This is approximately twice as large as the next largest estimated disparity and the only estimate whose confidence interval does not include zero.*
+
+```{r q3_c_graph}
+internet_ru %>%
+  mutate(Rurality = ifelse(urban, 'Urban', 'Rural') ) %>%
+  ungroup() %>%
+  mutate( division = factor( as.character(division),
+              as.character(
+                {internet_disp %>% arrange(Rural)}$division) ) 
+  ) %>%
+  ggplot( aes(x = division, y = est, fill = Rurality) ) +
+  geom_col( position = position_dodge() ) +
+  geom_errorbar( aes(ymin = lwr, ymax = upr), 
+                 position = position_dodge(),
+                 col = 'slategrey') +
+  theme_bw() + 
+  xlab('') +
+  ylab('% of homes with internet access') +
+  ylim(c(0, 100)) +
+  coord_flip() +
+  scale_fill_manual(values = c('darkred', 'navy'))
+```
+
