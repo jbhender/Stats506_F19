@@ -9,5 +9,8 @@
   1. `./R/sleepstudy_casestudy.R`:
   Illustrates working with S4 objects using the class lmerMod from the package
   lme4.
-  
+
+  1. `./R/case_study_3_chick_weight.R`:
+  Illustrates some dplyr programming syntax while implementing a bootstrap
+  procedure.  
   
