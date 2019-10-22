@@ -1,5 +1,4 @@
 PS1_Solutions.Rmd:277:  spread(Rurality, `Average Electricity Usage, kwh/home (95% CI)` ) %>%
-nyc_flights.R:77:  spread(origin, prop, fill = '-') %>%
 ps1_q2.R:143:  spread(origin, prop, fill = '-') %>%
 ps1_q3.R:28:weights_long = gather(weights, key = 'repl', value = 'w', BRRWT1:BRRWT96) %>%
 ps1_q3.R:197:  spread(urban, est) %>%
