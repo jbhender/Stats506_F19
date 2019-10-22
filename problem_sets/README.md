@@ -9,6 +9,15 @@ Solutions to problem set 1 are in the `ps1` folder. There you will find:
   1. `ps1_q3.R` - an R script with solutions to question 3
   1. `ps1_solutions_pdf.Rmd` - the Rmd file used to produce the pdf version of the solution document.
 
+Solutions to problem set 2 are in the `ps2` folder.  There you will find:
+
+  1. `ps2_q1.R` - an R script with solutions to question 1
+  1. `ps2_q2.R` - an R script with solutions to question 2
+  1. `ps2_q2_funcs.R` - an R script with functions used by `ps2_q2.R`
+  1. `PS2_Solutions.Rmd` - an Rmarkdown file that sources `ps2_q1.R` and `ps2_q2.R` and 
+     			   creates `PS2_Soltuions.html`
+  1. `PS2_Solutions.html` - an html file with answers (but note code) to problem set 2.
+
 ### Data sets
 
 Use the following three data sets for the final

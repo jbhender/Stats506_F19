@@ -1,0 +1,14 @@
+Test 1: 
+ Named num [1:5] 1.371 -0.565 0.363 0.633 0.404
+
+Test 2: 
+'data.frame': 5 obs of 5 variables
+ 2 numeric variable(s): b, d
+ 2 categorical variable(s): a, c
+
+Test 3: 
+'tbl_df': 5 obs of 6 variables
+ 2 numeric variable(s): b, d
+ 2 categorical variable(s): a, c
+ 1 list column(s): f
+
