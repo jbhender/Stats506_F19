@@ -23,4 +23,5 @@
 1. [boostrap_iqr_example.R](./R/bootstrap_iqr_example.R): Use the bootstrap and 
 the percentile method to compute 95% confidence bounds on the iqr or a quantile.
 
+1. [xvalidate_ridge.R](./R/xvalidate_ridge.R) Cross validation in ridge regression.
    

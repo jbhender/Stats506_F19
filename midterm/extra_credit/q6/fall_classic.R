@@ -131,6 +131,7 @@ dd_vs_tt[ dd_vs_tt_ties ] =
   sapply( dd_vs_tt_ties, function(i) extras('dd', 'tt') )
 
 ## Expected winning totals in a 162 game season for each team: -----------------
+#! <Task 3>
 mw_wins = 
 dd_wins = 
 tt_wins = 

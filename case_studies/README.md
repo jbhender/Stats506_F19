@@ -13,4 +13,8 @@
   1. `./R/case_study_3_chick_weight.R`:
   Illustrates some dplyr programming syntax while implementing a bootstrap
   procedure.  
-  
+
+  1. `./R/case_study_4_isolet_classification.R`:
+  Illustrates the use cross validation for hyper-parameter selection, using 
+  the alpha parameter in elastic net models as an example.
+
