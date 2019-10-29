@@ -18,3 +18,7 @@
   Illustrates the use cross validation for hyper-parameter selection, using 
   the alpha parameter in elastic net models as an example.
 
+### Stata
+
+ 1. `./Stata/case_study1_energy_type.do` - Estimate national totals for select types energy usage using the RECS 2015 data. 
+
