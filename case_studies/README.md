@@ -20,5 +20,8 @@
 
 ### Stata
 
- 1. `./Stata/case_study1_energy_type.do` - Estimate national totals for select types energy usage using the RECS 2015 data. 
+ 1. `./Stata/case_study1_energy_type.do` - Estimate national totals for select types energy usage using the RECS 2015 data. There are also several intermediate revisions, which we may reference in class and remove later.
+
+ 1. `./Stata/case_study2_esfridge.do` - Model the probability that the primary fridge in a home is
+Energy Star compliant, using the 2009 RECS data.  Focus is on regression and margins. 
 

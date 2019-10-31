@@ -25,3 +25,6 @@ the percentile method to compute 95% confidence bounds on the iqr or a quantile.
 
 1. [xvalidate_ridge.R](./R/xvalidate_ridge.R) Cross validation in ridge regression.
    
+# Stata
+
+1. [./Stata/stata_loops.do] Quick example of loop styles and locals.
