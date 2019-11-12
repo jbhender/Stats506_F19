@@ -18,6 +18,12 @@ Solutions to problem set 2 are in the `ps2` folder.  There you will find:
      			   creates `PS2_Soltuions.html`
   1. `PS2_Solutions.html` - an html file with answers (but note code) to problem set 2.
 
+Solutions to problem set 3 are in the `ps3` folder. There you will find:
+
+ 1. `ps3_q1.R` - an R script with solutions to question 1.
+ 1. `ps3_q2.R` - an R script with solutions to question 2.
+ 1. `PS3_Solutions.Rmd` - the markdown file used to create the html solution.
+
 ### Data sets
 
 Use the following three data sets for the final

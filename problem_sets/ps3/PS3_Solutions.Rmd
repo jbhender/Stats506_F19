@@ -1,0 +1,77 @@
+---
+title: "Problem Set 3, Solutions"
+author: "Stats 506, F19"
+date: "November 12, 2019"
+output: 
+  html_document: 
+    theme: united
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r run_scripts, include = FALSE}
+source('./ps3_q1.R')
+source('./ps3_q2.R')
+```
+
+## About
+
+In the solutions below, we focus on the answers to part c of each question.
+For functions please see the corresponding R script at the
+course git [repo](https://github.com/jbhender/Stats506_F19/tree/master/problem_sets). 
+
+## Question 1
+
+a. See `confint_jackknife()` defined in `ps3_q1.R`.
+a. See `confint_boot()` defined in `ps3_q1.R`.
+a. The table below contains CIs for each method and dose.
+
+```{r}
+cap = "**Table 1.** *95% Confidence intervals for the ToothGrowth data.*"
+tooth_growth_cis %>% 
+  mutate( ci = sprintf('(%4.2f, %4.2f)', lower, upper) ) %>%
+  pivot_wider( id_cols = "dose", values_from = 'ci', names_from = 'method') %>%
+  knitr::kable( format = 'html', caption = cap ) %>%
+  kableExtra::kable_styling("striped", full_width = TRUE)
+```
+
+## Question 2
+
+a. See `confint_jackknife_mc()` defined in `ps3_q2.R`.
+a. See `confint_boot_mc()` defined in `ps3_q2.R`.
+a. In the Monte Carlo simulation shown here, we compare CIs constructed using 
+the jackknife or one of three bootstrap methods for estimating the ratio of means
+$E[X] / E[Y] = 2$ when 
+$X_1, \dots, X_{30} \stackrel{_{iid}}{\sim} \textrm{Exponetial}(1)$ 
+and $Y_1, \dots, Y_{20} \stackrel{_{iid}}{\sim} \textrm{Exponential}(0.5)$.
+
+We use 10,000 Monte Carlo replicates and 10,000 bootstrap samples. The 
+Monte Carlo replicates are split into 10 blocks of 1,000 to avoid allocating too
+large of vectors in the bootstrap function.
+
+The results are in the table below.
+
+```{r pq3_q2c}
+cap = paste0("**Table 2.** *Comparison of jaccknife and bootstrap confidence ",
+ "intervals for a ratio of exponentials. *" )
+result_tab %>%
+  transmute( 
+    Method = method,
+    Coverage = sprintf('%4.2f (%4.2f, %4.2f)', cov_prob, 
+                         cov_prob - qnorm(.975)*se_cov, 
+                         cov_prob + qnorm(.975)*se_cov ),
+    Length = sprintf('%4.2f (%4.2f, %4.2f)', length, 
+                          length - qnorm(.975)*se_length, 
+                          length + qnorm(.975)*se_length ),
+    Shape = ifelse( method %in% c('basic bootstrap', 'jackknife'), '1 (-, -)', 
+                      sprintf('%4.2f (%4.2f, %4.2f)', shape, 
+                          shape - qnorm(.975)*se_shape, 
+                          shape + qnorm(.975)*se_shape )
+                      )
+  ) %>%
+  knitr::kable( format = 'html', caption = cap) %>%
+  kableExtra::kable_styling("striped", full_width = TRUE)
+```
+
