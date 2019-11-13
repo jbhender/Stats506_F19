@@ -26,6 +26,7 @@ Solutions to problem set 3 are in the `ps3` folder. There you will find:
 
 ### Data sets
 
+#### Problem Set 1
 Use the following three data sets for the final
 part of question four, problem set 1:
   1. train_trajectories.csv
@@ -52,3 +53,7 @@ but not y.
 
 The file `test_trajectories.csv` contains additional trajectories whose
 measures you should present in your solution.  
+
+#### Problem Set 4
+The dataset created in solution to Problem Set 2, question 2c and used
+in problem set 4, question 1, is posted here as `mousetrap_data.csv`.
