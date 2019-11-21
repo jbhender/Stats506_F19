@@ -27,6 +27,9 @@ the percentile method to compute 95% confidence bounds on the iqr or a quantile.
 
 1. [xvalidate_ridge_parallel.R](./R/xvalidate_ridge_parallel.R) Parallel cross validation.   
 
+1. [future](./R/future/) a collection of examples on using the "future" package for
+   asynchronous computing.
+
 # Stata
 
 1. [./Stata/stata_loops.do] Quick example of loop styles and locals.
