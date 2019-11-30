@@ -1,0 +1,402 @@
+------------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  /Users/jbhender/github/ps506/F19/ps4/ps4_q3.log
+  log type:  text
+ opened on:  30 Nov 2019, 11:56:39
+
+. cd ~/github/ps506/F19/ps4
+/Users/jbhender/github/ps506/F19/ps4
+
+. 
+. // defines a mata function for summarizing regressions in a matrix that
+. // can be written to excel
+. do sum_reg.do
+
+. *------------------------------------------------------------------------------*
+. * sum_reg is a mata function for summarizing regression models
+. * 
+. * usage: mata sum_reg("name")
+. * 
+. * sum_reg creates a matrix (in Stata) with columns est, se, lwr, and upr
+. *  representing:
+. *    "est" =  the values in e(b), 
+. *    "se"  =  the square root of the diagonal of e(V)
+. *    "lwr" and "upr" = est +/- 1.96*se
+. *
+. * It will work with glm objects, mixed regression, and marigns -- but we rely
+. * on the user to know what the elements of e(b) are and how they are scaled.
+. * 
+. *------------------------------------------------------------------------------*
+. mata
+------------------------------------------------- mata (type end to exit) ----------------
+:  void sum_reg (string scalar name) {
+sum_reg() already exists
+r(3000);
+
+:    b  = st_matrix("e(b)")
+
+:    se = sqrt( diagonal( st_matrix("e(V)") ) )
+
+:    l = b' - 1.96 * se
+
+:    u = b' + 1.96 * se
+
+:    all = (b', se, l, u)
+
+:    st_matrix(name, all)
+                 <istmt>:  3499  name not found
+r(3499);
+
+:    st_matrixrowstripe(name, st_matrixcolstripe("e(b)") )
+                 <istmt>:  3499  name not found
+r(3499);
+
+:    cols = ("", "", "", "" \ "est", "se", "lwr", "upr")
+
+:    st_matrixcolstripe(name, cols')
+                 <istmt>:  3499  name not found
+r(3499);
+
+:   }
+expression invalid
+r(3000);
+
+: end
+------------------------------------------------------------------------------------------
+
+. 
+end of do-file
+
+. 
+. * (a) Import and wrangle: ------------------------------------------------------
+. 
+. // Import and save demographic data 
+. fdause DEMO_D.XPT, clear
+
+. quietly compress
+
+. gsort +seqn
+
+. rename (riagendr ridexmon ridageyr indfmpir) ///
+>        (gender winter age pir)
+
+. replace winter = 0 if winter == 2 /* examined May 1 - Oct 31 */
+(5,157 real changes made)
+
+. keep seqn gender winter age pir
+
+. save DEMO_D.dta, replace
+file DEMO_D.dta saved
+
+. 
+. // Import and save DR1TOT_D data
+. fdause DR1TOT_D.XPT, clear
+
+. keep seqn-wtdr2 dr1day dr1_320z
+
+. quietly compress
+
+. gsort +seqn 
+
+. save DR1TOT_D.dta, replace
+file DR1TOT_D.dta saved
+
+. 
+. // Import and save DR2TOT_D data
+. fdause DR2TOT_D.XPT, clear
+
+. keep seqn dr2day dr2_320z
+
+. quietly compress
+
+. gsort +seqn 
+
+. save DR2TOT_D.dta, replace
+file DR2TOT_D.dta saved
+
+. 
+. // Merge the two dietary recall data sets
+. merge 1:1 seqn using DR1TOT_D.dta
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                             9,950  (_merge==3)
+    -----------------------------------------
+
+. drop _merge
+
+. 
+. // Merge in the demographics
+. merge m:1 seqn using DEMO_D.dta
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                           398
+        from master                         0  (_merge==1)
+        from using                        398  (_merge==2)
+
+    matched                             9,950  (_merge==3)
+    -----------------------------------------
+
+. 
+. // Reshape to long
+. reshape long dr@day, i(seqn-wtdr2) j(day) 
+(note: j = 1 2)
+
+Data                               wide   ->   long
+-----------------------------------------------------------------------------
+Number of obs.                    10348   ->   20696
+Number of variables                  12   ->      13
+j variable (2 values)                     ->   day
+xij variables:
+                          dr1day dr2day   ->   drday
+-----------------------------------------------------------------------------
+
+. label variable day "Day of Dietary Recall Interview"
+
+. 
+. // Plain water reponse variables
+. generate water = dr1_320z if day == 1
+(11,347 missing values generated)
+
+. replace water = dr2_320z if day == 2
+(8,429 real changes made)
+
+. generate any_water = water != 0 if water != .
+(2,918 missing values generated)
+
+. label variable any_water "Flag for whether water > 0"
+
+. drop water
+
+. 
+. // Weekday flag
+. generate weekday = 1
+
+. replace weekday = 0 if drday == 1 | drday == 7
+(5,552 real changes made)
+
+. label variable weekday "Weekday (M-F) Flag"
+
+. drop drday _merge
+
+. 
+. * (b) prepare data for analysis: -----------------------------------------------
+. 
+. // flag cases with any missing variables
+. generate missing = 0
+
+. foreach var of varlist any_water weekday winter age gender pir {
+  2.  replace missing = 1 if `var' == .
+  3. }
+(2,918 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(764 real changes made)
+
+. 
+. // center continuous variables at mean of day1 and not missing
+. foreach var of varlist age pir {
+  2.  quietly summarize `var' if missing == 0 & day == 1
+  3.  local `var'_mean = r(mean)
+  4.  display "`var' mean:",``var'_mean'
+  5.  generate `var'_c = `var' - ``var'_mean' /* Note: nested macro used here. */
+  6. }
+age mean: 27.91317
+pir mean: 2.3833322
+(1,068 missing values generated)
+
+. 
+. // change age units to decades
+. replace age_c = age_c / 10
+(20,696 real changes made)
+
+. 
+. * (c) GLM analysis using day one only: -----------------------------------------
+. 
+. // fit the logistic model
+. logistic any_water ///
+>          i.weekday i.winter c.age_c##c.age_c i.gender c.pir_c ///
+>          if day == 1
+
+Logistic regression                             Number of obs     =      8,937
+                                                LR chi2(6)        =     248.72
+                                                Prob > chi2       =     0.0000
+Log likelihood = -5179.2426                     Pseudo R2         =     0.0234
+
+---------------------------------------------------------------------------------
+      any_water | Odds Ratio   Std. Err.      z    P>|z|     [95% Conf. Interval]
+----------------+----------------------------------------------------------------
+      1.weekday |   1.130136   .0547601     2.52   0.012     1.027747    1.242726
+       1.winter |   .9010567   .0433605    -2.17   0.030     .8199563    .9901786
+          age_c |   1.158568   .0154857    11.01   0.000     1.128611    1.189321
+                |
+c.age_c#c.age_c |   .9737323   .0045511    -5.70   0.000     .9648531    .9826932
+                |
+       2.gender |    1.33266   .0637967     6.00   0.000     1.213307    1.463753
+          pir_c |   1.093849   .0173387     5.66   0.000     1.060388    1.128366
+          _cons |   2.594688   .1477453    16.74   0.000     2.320687    2.901041
+---------------------------------------------------------------------------------
+Note: _cons estimates baseline odds.
+
+. *;
+. mata sum_reg("logit_coef")
+
+.                  
+. // use margins to get impact of each variable on probability scale
+. margins, dydx(weekday winter gender age_c pir_c) post
+
+Average marginal effects                        Number of obs     =      8,937
+Model VCE    : OIM
+
+Expression   : Pr(any_water), predict()
+dy/dx w.r.t. : 1.weekday 1.winter age_c 2.gender pir_c
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   Std. Err.      z    P>|z|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+   1.weekday |    .024121   .0095916     2.51   0.012     .0053218    .0429203
+    1.winter |  -.0204689   .0094604    -2.16   0.030    -.0390109   -.0019269
+       age_c |   .0316543    .003046    10.39   0.000     .0256843    .0376244
+    2.gender |   .0564991   .0093977     6.01   0.000     .0380799    .0749184
+       pir_c |   .0176006   .0030935     5.69   0.000     .0115375    .0236637
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+. *outreg2 using logistic_margins.txt, replace
+. mata sum_reg("logit_me")
+
+. 
+. // write info to excel
+. putexcel set ps4_q3_results.xlsx, sheet("logit_coef") modify
+
+. putexcel A1=matrix(logit_coef), names
+file ps4_q3_results.xlsx saved
+
+. putexcel A1="group" B1="term"
+file ps4_q3_results.xlsx saved
+
+. putexcel set ps4_q3_results.xlsx, sheet("logit_me") modify
+
+. putexcel A1=matrix(logit_me), names
+file ps4_q3_results.xlsx saved
+
+. putexcel A1="variable"
+file ps4_q3_results.xlsx saved
+
+. 
+. * (d) Mixed GLM analysis using both days: --------------------------------------
+. meglm any_water ///
+>          i.weekday i.winter c.age_c##c.age_c i.gender c.pir_c || seqn:, ///
+>       family(binomial) link(logit) or
+
+Fitting fixed-effects model:
+
+Iteration 0:   log likelihood = -9630.9689  
+Iteration 1:   log likelihood = -9617.3683  
+Iteration 2:   log likelihood = -9617.3637  
+Iteration 3:   log likelihood = -9617.3637  
+
+Refining starting values:
+
+Grid node 0:   log likelihood = -9281.4496
+
+Fitting full model:
+
+Iteration 0:   log likelihood = -9281.4496  
+Iteration 1:   log likelihood = -9014.9191  
+Iteration 2:   log likelihood = -8972.8378  
+Iteration 3:   log likelihood = -8972.5316  
+Iteration 4:   log likelihood =  -8972.532  
+
+Mixed-effects GLM                               Number of obs     =     17,014
+Family:                binomial
+Link:                     logit
+Group variable:            seqn                 Number of groups  =      8,937
+
+                                                Obs per group:
+                                                              min =          1
+                                                              avg =        1.9
+                                                              max =          2
+
+Integration method: mvaghermite                 Integration pts.  =          7
+
+                                                Wald chi2(6)      =     383.72
+Log likelihood =  -8972.532                     Prob > chi2       =     0.0000
+---------------------------------------------------------------------------------
+      any_water | Odds Ratio   Std. Err.      z    P>|z|     [95% Conf. Interval]
+----------------+----------------------------------------------------------------
+      1.weekday |   1.239979   .0706157     3.78   0.000      1.10902    1.386404
+       1.winter |   .9278005   .0663278    -1.05   0.295     .8064971    1.067349
+          age_c |   1.363263   .0283086    14.92   0.000     1.308893    1.419891
+                |
+c.age_c#c.age_c |   .9550781   .0066945    -6.56   0.000     .9420468    .9682896
+                |
+       2.gender |   1.757915   .1262522     7.85   0.000     1.527092    2.023627
+          pir_c |   1.179018    .027727     7.00   0.000     1.125907    1.234633
+          _cons |   5.552253   .5026599    18.93   0.000     4.649516    6.630262
+----------------+----------------------------------------------------------------
+seqn            |
+      var(_cons)|   5.570796   .3561665                      4.914689    6.314492
+---------------------------------------------------------------------------------
+Note: Estimates are transformed only in the first equation.
+Note: _cons estimates baseline odds (conditional on zero random effects).
+LR test vs. logistic model: chibar2(01) = 1289.66     Prob >= chibar2 = 0.0000
+
+. mata sum_reg("mixed_logit_coef")
+
+. 
+. // use margins to get impact of each variable on probability scale: ------------
+. *! Caution: this runs a bit slowly! ~ 1 minute
+. margins, dydx(weekday winter gender age_c pir_c) post
+
+Average marginal effects                        Number of obs     =     17,014
+Model VCE    : OIM
+
+Expression   : Marginal predicted mean, predict()
+dy/dx w.r.t. : 1.weekday 1.winter age_c 2.gender pir_c
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |      dy/dx   Std. Err.      z    P>|z|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+   1.weekday |   .0232385   .0061903     3.75   0.000     .0111057    .0353714
+    1.winter |  -.0080304   .0076618    -1.05   0.295    -.0230472    .0069865
+       age_c |   .0359009   .0025318    14.18   0.000     .0309386    .0408632
+    2.gender |   .0605507   .0076308     7.94   0.000     .0455947    .0755067
+       pir_c |   .0176414   .0024932     7.08   0.000     .0127549    .0225279
+------------------------------------------------------------------------------
+Note: dy/dx for factor levels is the discrete change from the base level.
+
+. mata sum_reg("mixed_logit_me")
+
+. 
+. // write marginal effect estimates to a matrix
+. putexcel set ps4_q3_results.xlsx, sheet("mixed_logit_coef") modify
+
+. putexcel A1=matrix(mixed_logit_coef), names
+file ps4_q3_results.xlsx saved
+
+. putexcel A1="group" B1="term"
+file ps4_q3_results.xlsx saved
+
+. putexcel set ps4_q3_results.xlsx, sheet("mixed_logit_me") modify
+
+. putexcel A1=matrix(mixed_logit_me), names
+file ps4_q3_results.xlsx saved
+
+. putexcel A1="variable"
+file ps4_q3_results.xlsx saved
+
+. 
+. * clean up: --------------------------------------------------------------------
+. log close
+      name:  <unnamed>
+       log:  /Users/jbhender/github/ps506/F19/ps4/ps4_q3.log
+  log type:  text
+ closed on:  30 Nov 2019, 11:57:26
+------------------------------------------------------------------------------------------

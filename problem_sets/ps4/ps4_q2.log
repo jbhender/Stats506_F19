@@ -1,0 +1,224 @@
+------------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  /Users/jbhender/github/ps506/F19/ps4/ps4_q2.log
+  log type:  text
+ opened on:  30 Nov 2019, 11:03:46
+
+. *cd ~/github/ps506/F19/ps4
+. 
+. * data prep: -------------------------------------------------------------------
+. import delimited recs2015_public_v4.csv, clear
+(759 vars, 5,686 obs)
+
+. 
+. generate urban = "urban"
+
+. replace urban = "rural" if uatyp10 == "R"
+(1,160 real changes made)
+
+. 
+. // division labels
+. label define divnames ///
+>   1 "New England" ///
+>   2 "Middle Atlantic" ///
+>   3 "East North Central" ///
+>   4 "West North Central" ///
+>   5 "South Atlantic" ///
+>   6 "East South Central" ///
+>   7 "West South Central" ///
+>   8 "Mountain North" ///
+>   9 "Mountain South" ///
+>   10 "Pacific" 
+
+. 
+. label values division divnames
+
+. 
+. * setup replicate weights in long form: ----------------------------------------
+. preserve
+
+. keep doeid brrwt*
+
+. 
+. reshape long brrwt, i(doeid) j(repl)
+(note: j = 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 3
+> 0 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59
+>  60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 
+> 89 90 91 92 93 94 95 96)
+
+Data                               wide   ->   long
+-----------------------------------------------------------------------------
+Number of obs.                     5686   ->  545856
+Number of variables                  97   ->       3
+j variable (96 values)                    ->   repl
+xij variables:
+              brrwt1 brrwt2 ... brrwt96   ->   brrwt
+-----------------------------------------------------------------------------
+
+. save recs2015_v4_brrwt_long, replace
+file recs2015_v4_brrwt_long.dta saved
+
+. restore
+
+. 
+. * point estimates: -------------------------------------------------------------
+. // minimal variables
+. keep doeid nweight urban division internet
+
+. preserve
+
+. 
+. // compute weighted sums and proportion
+. generate ninternet = internet * nweight
+
+. collapse (sum) p_int=ninternet N=nweight, by(division urban)
+
+. replace p_int=p_int / N
+(20 real changes made)
+
+. drop N
+
+. 
+. // reshape to wide for differencing
+. reshape wide p_int, i(division) j(urban) string
+(note: j = rural urban)
+
+Data                               long   ->   wide
+-----------------------------------------------------------------------------
+Number of obs.                       20   ->      10
+Number of variables                   3   ->       3
+j variable (2 values)             urban   ->   (dropped)
+xij variables:
+                                  p_int   ->   p_intrural p_inturban
+-----------------------------------------------------------------------------
+
+. generate p_intdiff = p_inturban - p_intrural
+
+. save prop_internet, replace
+file prop_internet.dta saved
+
+. restore
+
+. 
+. * replicate estimates: ---------------------------------------------------------
+. // merge in replicate weights
+. drop nweight
+
+. merge 1:m doeid using recs2015_v4_brrwt_long
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                           545,856  (_merge==3)
+    -----------------------------------------
+
+. 
+. // compute weighted sums and proportions
+. generate ninternet = internet * brrwt
+
+. collapse (sum) p_int=ninternet N=brrwt, by(division urban repl)
+
+. replace p_int = p_int / N
+(1,920 real changes made)
+
+. rename p_int repl_p_int
+
+. drop N
+
+. 
+. // reshape to wide
+. reshape wide repl_p_int, i(division repl) j(urban) string
+(note: j = rural urban)
+
+Data                               long   ->   wide
+-----------------------------------------------------------------------------
+Number of obs.                     1920   ->     960
+Number of variables                   4   ->       4
+j variable (2 values)             urban   ->   (dropped)
+xij variables:
+                             repl_p_int   ->   repl_p_intrural repl_p_inturban
+-----------------------------------------------------------------------------
+
+. generate repl_p_intdiff = repl_p_inturban - repl_p_intrural
+
+. 
+. * std error computations: ------------------------------------------------------
+. // merge in point estimates
+. merge m:1 division using prop_internet.dta
+(label divnames already defined)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                               960  (_merge==3)
+    -----------------------------------------
+
+. 
+. // compute squared differences
+. foreach var of varlist p_intrural-p_intdiff {
+  2.   generate se_`var' = (`var' - repl_`var')^2 
+  3. }
+
+. 
+. // compute the MSE and scale
+. collapse (mean) se_*, by(division)
+
+. foreach var of varlist se_* {
+  2.   replace `var' = 2 * sqrt(`var')
+  3. }
+(10 real changes made)
+(10 real changes made)
+(10 real changes made)
+
+. 
+. * merge with point estimates and compute CI bounds: ----------------------------
+. merge 1:1 division using prop_internet.dta
+(label divnames already defined)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                             0
+    matched                                10  (_merge==3)
+    -----------------------------------------
+
+. drop _merge
+
+. 
+. foreach var of varlist p_* {
+  2.   generate `var'_lwr = `var' - 1.96 * se_`var'
+  3.   generate `var'_upr = `var' + 1.96 * se_`var'
+  4. }
+
+. 
+. // reorder and drop se
+. drop se_*
+
+. order division *diff* *urban* *rural*
+
+. 
+. * export: ----------------------------------------------------------------------
+. export delimited ps4_q2_results.csv 
+file ps4_q2_results.csv already exists
+r(602);
+
+end of do-file
+
+r(602);
+
+. do "/var/folders/5b/8m5r4m2d50z9ypn24v5l30_m0000gn/T//SD20620.000000"
+
+. export delimited ps4_q2_results.csv, replace
+(note: file ps4_q2_results.csv not found)
+file ps4_q2_results.csv saved
+
+. 
+end of do-file
+
+. do "/var/folders/5b/8m5r4m2d50z9ypn24v5l30_m0000gn/T//SD20620.000000"
+
+. log close
+      name:  <unnamed>
+       log:  /Users/jbhender/github/ps506/F19/ps4/ps4_q2.log
+  log type:  text
+ closed on:  30 Nov 2019, 11:04:09
+------------------------------------------------------------------------------------------

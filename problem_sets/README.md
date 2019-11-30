@@ -24,6 +24,18 @@ Solutions to problem set 3 are in the `ps3` folder. There you will find:
  1. `ps3_q2.R` - an R script with solutions to question 2.
  1. `PS3_Solutions.Rmd` - the markdown file used to create the html solution.
 
+Solutions to problem set 4 are in the `ps4` folder. There you will find:
+
+ 1. `ps4_q1.do`, `ps4_q1.log`, `ps4_q1_results.xlsx` - a Stata script, its log, and
+    the results it outputs to answer question 1.
+ 1. `ps4_q2.do`, `ps4_q2.log`, `ps4_q2_results.csv` - a Stata script, its log, and 
+    the results it outputs to answer question 2.
+ 1. `ps4_q3.do`, `ps4_q3.log`, `ps4_q3_results.xlsx` - a Stata script, its log, and
+    the results it outputs to answer question 3. 
+ 1. `sum_reg.do` - a short Stata script defining a mata function, based on the same
+     function defined in `ps4_q1.do`. This function is called by `ps4_q3.do`.  
+ 1. `ps4_q4.Rmd` - the R markdown file used to produce the solution summary document. 
+
 ### Data sets
 
 #### Problem Set 1

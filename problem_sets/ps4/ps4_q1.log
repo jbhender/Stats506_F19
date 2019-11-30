@@ -1,0 +1,273 @@
+------------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  /Users/jbhender/github/ps506/F19/ps4/ps4_q1.log
+  log type:  text
+ opened on:  30 Nov 2019, 12:15:32
+
+. *cd ~/github/ps506/F19/ps4/
+. 
+. * import and prepare data: -----------------------------------------------------
+. 
+. // import data
+. import delimited mousetrap_data.csv, clear
+(8 vars, 1,064 obs)
+
+. 
+. // encode factor variables
+. encode condition, generate(cond)
+
+. encode exemplar, generate(exemp)
+
+. generate condition_atypical = cond == 1
+
+. 
+. // create log curvature measures
+. foreach var of varlist tot_dist-auc {
+  2.  generate log_`var' = log(`var')
+  3. }
+(3 missing values generated)
+
+. 
+. * fit models and compare outcomes: ---------------------------------------------
+. 
+. // models
+. foreach var of varlist log_tot_dist-log_auc {
+  2.         mixed `var' i.condition_atypical || _all: R.subject_nr || exemp:
+  3.     estimates store me_`var'
+  4. }
+
+Performing EM optimization: 
+
+Performing gradient-based optimization: 
+
+Iteration 0:   log likelihood = -290.32937  
+Iteration 1:   log likelihood = -290.32937  
+
+Computing standard errors:
+
+Mixed-effects ML regression                     Number of obs     =      1,064
+
+-------------------------------------------------------------
+                |     No. of       Observations per Group
+ Group Variable |     Groups    Minimum    Average    Maximum
+----------------+--------------------------------------------
+           _all |          1      1,064    1,064.0      1,064
+          exemp |         19         43       56.0         60
+-------------------------------------------------------------
+
+                                                Wald chi2(1)      =      18.99
+Log likelihood = -290.32937                     Prob > chi2       =     0.0000
+
+--------------------------------------------------------------------------------------
+        log_tot_dist |      Coef.   Std. Err.      z    P>|z|     [95% Conf. Interval]
+---------------------+----------------------------------------------------------------
+1.condition_atypical |   .1613632   .0370304     4.36   0.000      .088785    .2339414
+               _cons |   7.151627   .0239855   298.16   0.000     7.104616    7.198638
+--------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------
+  Random-effects Parameters  |   Estimate   Std. Err.     [95% Conf. Interval]
+-----------------------------+------------------------------------------------
+_all: Identity               |
+             var(R.subjec~r) |   .0089411   .0026381      .0050147    .0159418
+-----------------------------+------------------------------------------------
+exemp: Identity              |
+                  var(_cons) |   .0038946   .0018468      .0015376    .0098648
+-----------------------------+------------------------------------------------
+               var(Residual) |   .0935915   .0042206      .0856743    .1022403
+------------------------------------------------------------------------------
+LR test vs. linear model: chi2(2) = 50.53                 Prob > chi2 = 0.0000
+
+Note: LR test is conservative and provided only for reference.
+
+Performing EM optimization: 
+
+Performing gradient-based optimization: 
+
+Iteration 0:   log likelihood = -1626.4639  
+Iteration 1:   log likelihood = -1626.4639  
+
+Computing standard errors:
+
+Mixed-effects ML regression                     Number of obs     =      1,064
+
+-------------------------------------------------------------
+                |     No. of       Observations per Group
+ Group Variable |     Groups    Minimum    Average    Maximum
+----------------+--------------------------------------------
+           _all |          1      1,064    1,064.0      1,064
+          exemp |         19         43       56.0         60
+-------------------------------------------------------------
+
+                                                Wald chi2(1)      =      20.41
+Log likelihood = -1626.4639                     Prob > chi2       =     0.0000
+
+--------------------------------------------------------------------------------------
+     log_max_abs_dev |      Coef.   Std. Err.      z    P>|z|     [95% Conf. Interval]
+---------------------+----------------------------------------------------------------
+1.condition_atypical |   .5099528   .1128828     4.52   0.000     .2887065    .7311991
+               _cons |   4.767534   .0782744    60.91   0.000     4.614119    4.920949
+--------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------
+  Random-effects Parameters  |   Estimate   Std. Err.     [95% Conf. Interval]
+-----------------------------+------------------------------------------------
+_all: Identity               |
+             var(R.subjec~r) |   .1311094   .0361334      .0763915    .2250208
+-----------------------------+------------------------------------------------
+exemp: Identity              |
+                  var(_cons) |   .0309788   .0171788      .0104482    .0918515
+-----------------------------+------------------------------------------------
+               var(Residual) |   1.151791   .0519265      1.054384    1.258197
+------------------------------------------------------------------------------
+LR test vs. linear model: chi2(2) = 54.27                 Prob > chi2 = 0.0000
+
+Note: LR test is conservative and provided only for reference.
+
+Performing EM optimization: 
+
+Performing gradient-based optimization: 
+
+Iteration 0:   log likelihood =  -1797.123  
+Iteration 1:   log likelihood =  -1797.123  
+
+Computing standard errors:
+
+Mixed-effects ML regression                     Number of obs     =      1,064
+
+-------------------------------------------------------------
+                |     No. of       Observations per Group
+ Group Variable |     Groups    Minimum    Average    Maximum
+----------------+--------------------------------------------
+           _all |          1      1,064    1,064.0      1,064
+          exemp |         19         43       56.0         60
+-------------------------------------------------------------
+
+                                                Wald chi2(1)      =      25.09
+Log likelihood =  -1797.123                     Prob > chi2       =     0.0000
+
+--------------------------------------------------------------------------------------
+     log_avg_abs_dev |      Coef.   Std. Err.      z    P>|z|     [95% Conf. Interval]
+---------------------+----------------------------------------------------------------
+1.condition_atypical |   .6510174   .1299681     5.01   0.000     .3962846    .9057503
+               _cons |   3.081997    .096522    31.93   0.000     2.892817    3.271176
+--------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------
+  Random-effects Parameters  |   Estimate   Std. Err.     [95% Conf. Interval]
+-----------------------------+------------------------------------------------
+_all: Identity               |
+             var(R.subjec~r) |   .2456525   .0612652      .1506723    .4005059
+-----------------------------+------------------------------------------------
+exemp: Identity              |
+                  var(_cons) |   .0402873   .0229428      .0131955    .1230012
+-----------------------------+------------------------------------------------
+               var(Residual) |   1.568348   .0706846      1.435751     1.71319
+------------------------------------------------------------------------------
+LR test vs. linear model: chi2(2) = 80.27                 Prob > chi2 = 0.0000
+
+Note: LR test is conservative and provided only for reference.
+
+Performing EM optimization: 
+
+Performing gradient-based optimization: 
+
+Iteration 0:   log likelihood = -1605.4614  
+Iteration 1:   log likelihood = -1605.4613  
+
+Computing standard errors:
+
+Mixed-effects ML regression                     Number of obs     =      1,061
+
+-------------------------------------------------------------
+                |     No. of       Observations per Group
+ Group Variable |     Groups    Minimum    Average    Maximum
+----------------+--------------------------------------------
+           _all |          1      1,061    1,061.0      1,061
+          exemp |         19         43       55.8         60
+-------------------------------------------------------------
+
+                                                Wald chi2(1)      =      17.48
+Log likelihood = -1605.4613                     Prob > chi2       =     0.0000
+
+--------------------------------------------------------------------------------------
+             log_auc |      Coef.   Std. Err.      z    P>|z|     [95% Conf. Interval]
+---------------------+----------------------------------------------------------------
+1.condition_atypical |   .4055942   .0970002     4.18   0.000     .2154772    .5957111
+               _cons |   11.01512   .0713006   154.49   0.000     10.87537    11.15487
+--------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------
+  Random-effects Parameters  |   Estimate   Std. Err.     [95% Conf. Interval]
+-----------------------------+------------------------------------------------
+_all: Identity               |
+             var(R.subjec~r) |   .1318176   .0358157      .0773921    .2245175
+-----------------------------+------------------------------------------------
+exemp: Identity              |
+                  var(_cons) |    .017791   .0126617      .0044097     .071778
+-----------------------------+------------------------------------------------
+               var(Residual) |   1.120721   .0505865      1.025832    1.224387
+------------------------------------------------------------------------------
+LR test vs. linear model: chi2(2) = 53.07                 Prob > chi2 = 0.0000
+
+Note: LR test is conservative and provided only for reference.
+
+. 
+. // define a mata function for obtaining estimates and CI's
+. *! Students could accomplish outputting results in any of a number of ways,
+. *  this is just one example using the concept of a mata function which was
+. *  not discussed in class.
+. * 
+. * Thanks to the post below for the pointer to mata functions:
+. * https://www.stata.com/statalist/archive/2011-01/msg00393.html
+. mata
+------------------------------------------------- mata (type end to exit) ----------------
+:  void sum_reg () {
+>    b  = st_matrix("e(b)")
+>    se = sqrt( diagonal( st_matrix("e(V)") ) )
+>    l = b' - 1.96 * se
+>    u = b' + 1.96 * se
+>    all = (b', se, l, u)
+>    st_matrix("reg_summary", all)
+>    st_matrixrowstripe("reg_summary", st_matrixcolstripe("e(b)") )
+>    cols = ("", "", "", "" \ "est", "se", "lwr", "upr")
+>    st_matrixcolstripe("reg_summary", cols')
+>   }
+
+: end
+------------------------------------------------------------------------------------------
+
+. 
+. // loop over response variables, creating a sheet for each
+. foreach var of varlist log_tot_dist-log_auc {
+  2.   estimates restore me_`var'
+  3.   mata sum_reg()
+  4.   putexcel set ps4_q1_results.xlsx, modify sheet(`var')
+  5.   putexcel A1 = matrix(reg_summary), names
+  6.   putexcel A1 = "group"
+  7.   putexcel B1 = "term"
+  8. }
+(results me_log_tot_dist are active now)
+file ps4_q1_results.xlsx saved
+file ps4_q1_results.xlsx saved
+file ps4_q1_results.xlsx saved
+(results me_log_max_abs_dev are active now)
+file ps4_q1_results.xlsx saved
+file ps4_q1_results.xlsx saved
+file ps4_q1_results.xlsx saved
+(results me_log_avg_abs_dev are active now)
+file ps4_q1_results.xlsx saved
+file ps4_q1_results.xlsx saved
+file ps4_q1_results.xlsx saved
+(results me_log_auc are active now)
+file ps4_q1_results.xlsx saved
+file ps4_q1_results.xlsx saved
+file ps4_q1_results.xlsx saved
+
+. 
+. log close
+      name:  <unnamed>
+       log:  /Users/jbhender/github/ps506/F19/ps4/ps4_q1.log
+  log type:  text
+ closed on:  30 Nov 2019, 12:15:39
+------------------------------------------------------------------------------------------
