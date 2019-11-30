@@ -2,7 +2,7 @@
       name:  <unnamed>
        log:  /Users/jbhender/github/ps506/F19/ps4/ps4_q3.log
   log type:  text
- opened on:  30 Nov 2019, 11:56:39
+ opened on:  30 Nov 2019, 16:14:41
 
 . cd ~/github/ps506/F19/ps4
 /Users/jbhender/github/ps506/F19/ps4
@@ -30,36 +30,16 @@
 . mata
 ------------------------------------------------- mata (type end to exit) ----------------
 :  void sum_reg (string scalar name) {
-sum_reg() already exists
-r(3000);
-
-:    b  = st_matrix("e(b)")
-
-:    se = sqrt( diagonal( st_matrix("e(V)") ) )
-
-:    l = b' - 1.96 * se
-
-:    u = b' + 1.96 * se
-
-:    all = (b', se, l, u)
-
-:    st_matrix(name, all)
-                 <istmt>:  3499  name not found
-r(3499);
-
-:    st_matrixrowstripe(name, st_matrixcolstripe("e(b)") )
-                 <istmt>:  3499  name not found
-r(3499);
-
-:    cols = ("", "", "", "" \ "est", "se", "lwr", "upr")
-
-:    st_matrixcolstripe(name, cols')
-                 <istmt>:  3499  name not found
-r(3499);
-
-:   }
-expression invalid
-r(3000);
+>    b  = st_matrix("e(b)")
+>    se = sqrt( diagonal( st_matrix("e(V)") ) )
+>    l = b' - 1.96 * se
+>    u = b' + 1.96 * se
+>    all = (b', se, l, u)
+>    st_matrix(name, all)
+>    st_matrixrowstripe(name, st_matrixcolstripe("e(b)") )
+>    cols = ("", "", "", "" \ "est", "se", "lwr", "upr")
+>    st_matrixcolstripe(name, cols')
+>   }
 
 : end
 ------------------------------------------------------------------------------------------
@@ -398,5 +378,5 @@ file ps4_q3_results.xlsx saved
       name:  <unnamed>
        log:  /Users/jbhender/github/ps506/F19/ps4/ps4_q3.log
   log type:  text
- closed on:  30 Nov 2019, 11:57:26
+ closed on:  30 Nov 2019, 16:16:06
 ------------------------------------------------------------------------------------------

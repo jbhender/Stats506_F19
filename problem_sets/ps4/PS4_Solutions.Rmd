@@ -1,0 +1,314 @@
+---
+title: "Problem Set 4, Solutions"
+author: "Stats 506, F19"
+date: "November 30, 2019"
+output: 
+  html_document: 
+    theme: united
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+#knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+```
+
+```{r libraries, include=TRUE, message = FALSE}
+# libraries
+library(tidyverse)
+```
+
+
+## About
+
+This assignment asked you to perform various analyses in Stata. Those analyses can be found in the problem sets folder of the course [repo](https://github.com/jbhender/Stats506_F19/tree/master/problem_sets). 
+
+In the solutions below, we read in the results output by the Stata 
+scripts and provide substantive answers to the questions posed.
+
+## Question 1
+
+See `ps4_q1.do` for the analysis in which we fit linear mixed models
+comparing the log curvature measures between the typical and atypical
+conditions from the mouse-tracking experiments of problem set 2.
+
+The code below reads the results into R.
+```{r read_data}
+# Results for each measure are in their own sheets
+measures = c('tot_dist', 'max_abs_dev', 'avg_abs_dev', 'auc')
+sheets = paste('log', measures, sep = '_')
+clean_measures = c('Total Distance', 
+                   'Max Abs Deviation', 
+                   'Avg Abs Deviation', 
+                   'AUC')
+names(clean_measures) = measures
+
+# Read and combine all measures
+result_list = vector(mode = 'list', length = length(sheets))
+names(result_list) = sheets
+for (sheet in sheets) {
+ result_list[[sheet]] =   readxl::read_xlsx("./ps4_q1_results.xlsx", sheet = sheet)
+}
+
+results_df = bind_rows(result_list)
+```
+
+Next, we clean the results.  
+```{r prep_data}
+# atypical coefficients (multiplier)
+atypical_df = results_df %>%
+  filter( term == '1.condition_atypical') %>%
+  transmute( 
+    measure = str_replace_all(group, 'log_', ''),
+    term = 'atypical',
+    est = exp(est),
+    lwr = exp(lwr),
+    upr = exp(upr)
+  )
+
+# baseline intercepts from typical condtion
+typical_df = results_df %>%
+  filter( term == '_cons' & grepl('^log', group)) %>%
+  transmute( 
+    measure = str_replace_all(group, 'log_', ''),
+    term = 'typical',
+    est = exp(est),
+    lwr = exp(lwr),
+    upr = exp(upr)
+  )
+
+# random effect standard deviations
+# For the variances as repored by Stata, square these results. 
+ranef_df = results_df %>%
+  filter( term == '_cons' & grepl('^lns', group)) %>%
+  transmute(
+    measure = rep(typical_df$measure, each = 3),
+    term = rep( c('subject', 'exemplar', 'error'), 4),
+    est = exp(est),
+    lwr = exp(lwr),
+    upr = exp(upr)
+  )
+```
+
+Now we plot the results. 
+```{r fig1, fig.cap = cap}
+cap = paste(
+  "**Figure 1.** *Relative effect of atypical condition on each curvature measure.*")
+  
+atypical_df %>%
+  arrange( est ) %>%
+  mutate( measure = factor(measure, levels = unique(measure),
+                           labels = clean_measures[unique(measure)]) ) %>%
+  ggplot( aes( y = measure, x = est) ) +
+  geom_point() +
+  geom_errorbarh( aes(xmin = lwr, xmax = upr) ) + 
+  geom_vline( xintercept = 1, lty = 'dashed') + 
+  xlab('relative effect on curvature measure of an atypical exemplar') + 
+  ylab('') +
+  theme_bw()
+```
+
+Finally, this table summarizes all four models. Note that the variance terms
+for the random effects are given here on the standard deviation scale. 
+
+```{r q1_tab}
+cap = paste(
+  '**Table 1.** *Coefficients for linear mixed models of log curvature',
+  'measure with an indicator for the atypical conditions as the covariate and',
+  'variance effects (on the standard deviation scale) for subject and',
+  'exemplar Values are shown as estimates',
+  '(on the natural scale) and (Wald) 95% confidence intervals.*'
+)
+bind_rows( typical_df, atypical_df, ranef_df) %>%
+  mutate( ci = sprintf('%.2f (%.2f, %.2f)', est, lwr, upr)) %>%
+  pivot_wider(id_cols = term, names_from = measure, values_from = ci) %>%
+  knitr::kable(format = 'html', caption = cap, 
+              col.names = c('Model term', clean_measures) ) %>%
+  kableExtra::kable_styling("striped", full_width = TRUE)
+```
+
+## Question 2
+
+In this question, we use Stata and the RECS 2015 data to compare disparities in
+internet access betwen urban (including "urban cluster") and rural areas. The
+bulk of the analysis appears in `ps4_q2.do`. 
+
+First we read and clean the data.
+```{r q2_readdata}
+# clean data from older questions
+rm( list = ls() )
+
+# read in q2 results
+q2_df = readr::read_delim("./ps4_q2_results.csv", delim = ",")
+```
+
+Next, we plot the proportion of homes with internet access in the urban and
+rural areas of each census division.
+
+```{r q2_fig1, fig.cap = cap}
+cap = paste("**Figure 2.** *Proportion of homes with internet access in each",
+            "Census Division.*")
+
+# reshape for plotting
+plot_data = q2_df %>%
+  pivot_longer(cols = starts_with('p_int'), names_prefix = 'p_int',
+               names_to = 'var') %>%
+  mutate( rurality = stringr::str_replace_all(var, '_.*', ''),
+          type = ifelse( grepl('_', var), 
+                        stringr::str_replace_all(var, '.*_', ''),
+                        'est'
+                        )
+  ) %>%
+  pivot_wider(id_cols = c('division', 'rurality'), 
+              names_from = type, 
+              values_from = value
+  ) 
+
+# order divisions by urban rural differences
+div_order = 
+  {plot_data %>%
+  filter(rurality == 'diff' ) %>%
+  arrange( est )}$division
+
+plot_data = mutate(plot_data, division = factor(division, div_order))
+
+# plot 
+plot_data %>%
+  filter( rurality != 'diff' ) %>%
+  ggplot( aes( x = division, color = rurality ) ) +
+  geom_point( aes(y = est), position = position_dodge(width = 0.5) ) +
+  geom_errorbar( aes(ymin = lwr, ymax = upr), 
+                  position = position_dodge(width = 0.5) ) +
+  theme_bw() +
+  scale_color_manual( values = c("darkred", "darkblue")) +
+  ylab("Proportion of homes with internet access.") +
+  coord_flip() 
+```
+
+
+```{r q2_fig2, fig.cap = cap}
+cap = paste("**Figure 3.** *Difference (urban less rural) in proportion of",
+  "homes with internet access in each Census Division.*")
+
+plot_data %>%
+  filter( rurality == 'diff' ) %>%
+  ggplot( aes( x = division)  ) +
+  geom_point( aes(y = est) ) +
+  geom_errorbar( aes(ymin = lwr, ymax = upr) ) +
+  theme_bw() +
+  scale_color_manual( values = c("darkred", "darkblue")) +
+  ylab("Difference in proportion of homes with internet access.") +
+  geom_hline(yintercept = 0, lty = 'dashed') + 
+  coord_flip() 
+```
+
+## Question 3
+
+In this problem, we use 2005-2006 NHANES data to answer the question:
+
+>Are people in the US more likely to drink water on a weekday than a weekend day?
+
+The data preparation and analyses addressing this question are in `ps4_q3.do`.
+
+First, here are the answers to the question in part b.
+
+For those with non-missing data, the mean age is 27.9 years and the mean
+poverty income ratio is 2.38.  We center these variables to make the
+interactions, including squared age, more interpretable.
+
+Next, we read in the coefficients and marginal effects from part (c) and (d) and present each in a table.
+
+```{r q3_read}
+sheets = c('logit_coef', 'logit_me', 
+           'mixed_logit_coef', 'mixed_logit_me')
+
+results_list = vector(mode = 'list', length = length(sheets) )
+names(results_list) = sheets
+for ( sheet in sheets ) {
+  results_list[[sheet]] = readxl::read_xlsx('ps4_q3_results.xlsx', sheet = sheet)
+}
+
+```
+
+Here we prepare the coefficient table. 
+```{r q3_clean_coefs}
+## Merge and clean coefficients for display
+day1 = results_list[['logit_coef']] %>%
+  transmute(group, term,
+        day1 = sprintf('%4.2f (%4.2f, %4.2f)', exp(est), exp(lwr), exp(upr)) 
+  ) 
+
+day_both = results_list[['mixed_logit_coef']] %>%
+  transmute(group, term, 
+            mixed = ifelse(group == 'any_water',
+             sprintf('%4.2f (%4.2f, %4.2f)', exp(est), exp(lwr), exp(upr)),
+             sprintf('%4.1f (%4.1f, %4.1f)', est, lwr, upr)
+            )
+  )
+
+# clean names for coefficients
+term_names = c(
+  "1.weekday" = 'Weekday',
+  "1.winter"  = 'Winter',
+  "age_c" = 'Age',
+  "c.age_c#c.age_c" = 'Age Squared',
+  "2.gender" = 'Female',
+  "pir_c" = 'Poverty Income Ratio',
+  "_cons" = 'Baseline Odds',
+  "var(_cons[seqn])" = "Var. of subject effects")
+
+# Merge and clean
+coef_tab = left_join(day_both, day1, by = c('group', 'term')) %>% 
+  filter( !grepl('b\\.', term)) %>%
+  select(-group) %>%
+  mutate(term = term_names[term] )
+```
+
+This is the coefficient table.
+```{r q3_coef_tab}
+cap = paste("**Table 2.** *Odds ratios for water drinking.*",
+"Baseline odds are for a weekend day in the summer for a male", "respondent at mean age (27.3 years) and PIR (2.38). Note that age",
+"is scaled in decades and has been centered."
+)
+
+knitr::kable(coef_tab, format = 'html', caption = cap) %>%
+  kableExtra::kable_styling("striped", full_width = TRUE)
+```
+
+Next, we prepare the table of average marginal effects. 
+
+```{r q3_clean_me}
+## Merge and clean marginal effects for display
+day1_me = results_list[['logit_me']] %>%
+  transmute(variable, day1 = sprintf('%5.3f (%5.3f, %5.3f)', est, lwr, upr) ) 
+
+day_both_me = results_list[['mixed_logit_me']] %>%
+  transmute(variable, mixed = sprintf('%5.3f (%5.3f, %5.3f)', est, lwr, upr) )
+
+# clean names for coefficients
+var_names = c(
+  "1.weekday" = 'Weekday',
+  "1.winter"  = 'Winter',
+  "age_c" = 'Age',
+  "c.age_c#c.age_c" = 'Age Squared',
+  "2.gender" = 'Female',
+  "pir_c" = 'Poverty Income Ratio'
+)
+
+# Merge and clean
+me_tab = left_join(day_both_me, day1_me, by = 'variable') %>% 
+  filter( !grepl('b\\.', variable)) %>%
+  mutate(variable = var_names[variable] )
+```
+
+Here is the table of average marginal effects. 
+
+```{r q3_me_tab}
+cap = paste("**Table 4.** *Average marginal effects for water drinking.*")
+
+knitr::kable(me_tab, format = 'html', caption = cap) %>%
+ kableExtra::kable_styling("striped", full_width = TRUE)
+```
+
+The two models give very similar results, and both support the assertion that
+people are slightly more likely to drink water on a weekday than on the weekend.
