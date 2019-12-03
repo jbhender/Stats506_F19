@@ -14,7 +14,7 @@
 /* 80: ---------------------------------------------------------------------- */
 
 /* data library for reading/writing data: ----------------------------------- */
-libname mylib '~/github/Stats506_F19/examples/sas/';
+libname mylib '~/github/Stats506_F19/examples/sas/data/';
 
 /* Create a rural subset: --------------------------------------------------- */
 data rural;

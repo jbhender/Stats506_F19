@@ -15,7 +15,7 @@
 /* 80: ---------------------------------------------------------------------- */
 
 /* data library for reading/writing data: ----------------------------------- */
-libname mylib '~/github/Stats506_F19/examples/sas/';
+libname mylib '~/github/Stats506_F19/examples/sas/data/';
 
 /* create a short name and working copy for recs data: ---------------------- */
 data recs;
