@@ -1,4 +1,4 @@
-/* Case Study using the sleepstudy data from bnR's lme4 package
+/* Case Study using the sleepstudy data from R's lme4 package
  * Stats 506, Fall 2019
  * 
  * This case study is meant to illusrtate some basic SAS usage with a focus
