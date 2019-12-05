@@ -32,6 +32,10 @@ the percentile method to compute 95% confidence bounds on the iqr or a quantile.
 
 # Stata
 
-1. [./Stata/stata_loops.do] Quick example of loop styles and locals.
+1. [stata_loops.do](./Stata/stata_loops.do) Quick example of loop styles and locals.
 
-1. [./Stata/ps2_q2_F18.do] Example use of putexcel from last year's solution.
+1. [ps2_q2_F18.do](./Stata/ps2_q2_F18.do) Example use of putexcel from last year's homework solution.
+
+# SAS
+
+1. [example0.sas](./sas/example0.sas) Reading data and sas basics.
