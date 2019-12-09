@@ -24,7 +24,9 @@
 
 #' ## Libraries
 # libraries: -------------------------------------------------------------------
-library(tidyverse); library(data.table); library(future)
+suppressPackageStartupMessages({
+  library(tidyverse); library(data.table); library(future)
+})
 
 #' ## a
 #' To scroll the first few lines of the compressed data use:
@@ -38,6 +40,7 @@ library(tidyverse); library(data.table); library(future)
 #' There are 68 rows of metadata, with column headers beginning on line 69.
 #' There is also a tag at the end of the file, we will let `fread` handle this
 #' here.
+#' 
 
 #' ## b
 #' In this part we read and format the data, pivoting to a longer format with
@@ -197,7 +200,8 @@ compute_custom_stat = function(chrom_long,
 #compute_custom_stat(chrom_long, permute = FALSE, type = 'two-tail')
 
 #' We could make the computations below more efficient by allowing the
-#' function above to compute more than one permutation at a time.  
+#' function above to compute more than one permutation at a time. 
+#'  
 
 #' ## h
 #' In this part, we compute the $T_{\textrm{abs}}$ statistic from 
@@ -299,7 +303,7 @@ tm_future =
 #' ## Timing Comparison
 #' Here we briefly compare the timing of the implementations above. A solution
 #' creating all multiple permutations in a single data.table would likely be
-#' more efficient that this.
+#' more efficient thans this.
 
 #+ timings
 cap_tm = "**Table 1.** *Timing comparisons.*"
@@ -362,6 +366,7 @@ p_tab = p_tab[order(p_abs), lapply(.SD, round, digits = 3),
               .SDcols = paste0('p_', c('abs', 'up', 'down')) ]
 
 cap_res = "**Table 2.** *Results.*"
-knitr::kable(p_tab, format = 'html', caption = cap_res) %>%
+cn = c('$p_{\\textrm{abs}}$', '$p_{\\textrm{up}}$', '$p_{\\textrm{down}}$')
+knitr::kable(p_tab, format = 'html', col.names = cn, caption = cap_res) %>%
   kableExtra::kable_styling("striped", full_width = TRUE)
 
