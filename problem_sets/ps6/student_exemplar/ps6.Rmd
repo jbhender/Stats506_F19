@@ -1,0 +1,127 @@
+---
+title: "Problem Set 6, Stats 506 F19"
+author: "Jie Cao"
+date: "`r format.Date(Sys.Date(), '%B %d, %Y')`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE)
+library(tidyverse)
+library(kableExtra)
+```
+
+Here is the list of files I submitted for this problem set 6:
+
+1. Question 1
+
+  + ps6_q1.sas (SAS script)
+  
+  + ps6_q1.log (SAS log)
+  
+  + ps6_q1.csv (Summary table presenting results)
+  
+2. Question 2
+
+  + ps6_q2.sas (SAS script)
+  
+  + ps6_q2.log (SAS log)
+  
+  + ps6_q2_b.csv (Summary table answering question 2b)
+  
+  + ps6_q2_c.csv (Summary table answering question 2c)
+  
+3. Question 3
+
+  + ps6_q3.sas (SAS script)
+  
+  + ps6_q3.log (SAS log)
+  
+  + ps6_q3_b.csv (Summary table answering quetion 3b/2b)
+  
+  + ps6_q3_c.csv (Summary table answering question 3c/2c)
+  
+  
+\pagebreak
+  
+### Question 1
+
+Here's my solution text to question 1.
+
+```{r q1_sas}
+cat("```SAS\n")
+writeLines(readLines("./ps6_q1.sas"))
+cat("```\n")
+```
+
+```{r q1_table}
+q1 = read_csv("./ps6_q1.csv")
+cap1 = paste("Model summaries.", 
+             "This table shows the relative effect (with 95\\% confidence intervals)", 
+             "of the atypical condition on each of four curvature measures.", 
+             "Standard deviations for each variance component -", 
+             "subjects, exemplar, and error are also shown.")
+q1 %>% 
+  knitr::kable(cap = cap1, 
+               format = "latex", 
+               booktabs = TRUE,
+               digits = 2) %>% 
+  kableExtra::kable_styling(latex_options = "hold_position") %>% 
+  kableExtra::row_spec(0, bold = TRUE)
+```
+
+\pagebreak
+
+### Question 2
+
+Here's my solution text to question 2. Answers to 2b and 2c are shown on the last page of this document. 
+
+```{r q2_sas}
+cat("```SAS\n")
+writeLines(readLines("./ps6_q2.sas"))
+cat("```\n")
+```
+
+\pagebreak
+
+### Question 3
+
+Here's my solution text to question 3. Answers to 3b and 3c (same as answers to 2b and 2c) are shown on the last page of this document. 
+
+```{r q3_sas}
+cat("```SAS\n")
+writeLines(readLines("./ps6_q3.sas"))
+cat("```\n")
+```
+
+\pagebreak
+
+**(2b/3b) What is the national average home temperature at night, among homes that use space heating?**
+
+```{r q3_b_table}
+q3_b = read_csv("./ps6_q3_b.csv")
+q3_b_pe = q3_b$`Average temperature at night`
+q3_b_ci = q3_b$`95% Confidence Interval`
+```
+
+The national average home temperature (95% CI) at night, among homes that use space heating is `r q3_b_pe` `r q3_b_ci` $^\circ$F.
+
+**(2c/3c) What is the average winter home temperatures at night, during the day with someone home, and during the day with no one home (when applicable), by census division?**
+
+```{r q3_c_table}
+q3_c = read_csv("./ps6_q3_c.csv")
+cap3c = paste("National average temperature (95\\% CI)", 
+              "during the day with someone home,", 
+              "during the day with no one home,", 
+              "and at night,", 
+              "by census division")
+q3_c %>% 
+  knitr::kable(format = "latex", 
+               booktabs = TRUE, 
+               cap = cap3c) %>% 
+  kableExtra::kable_styling(latex_options = "hold_position", 
+                            full_width = FALSE) %>% 
+  kableExtra::column_spec(2:4, width = "12em") %>% 
+  kableExtra::row_spec(0, bold = TRUE)
+```
+
