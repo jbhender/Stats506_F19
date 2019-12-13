@@ -1,0 +1,4 @@
+Effect,Condition,Estimate,StdErr,DF,tValue,Probt,Alpha,Lower,Upper
+Intercept,,7.1517,0.02491,17,287.09,<.0001,0.05,7.0992,7.2043
+Condition,Atypical,0.1613,0.03882,986,4.16,<.0001,0.05,0.08516,0.2375
+Condition,Typical,0,,,,,,,

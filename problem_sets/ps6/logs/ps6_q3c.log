@@ -1,0 +1,202 @@
+1                                                          The SAS System                          08:03 Thursday, December 12, 2019
+
+NOTE: Copyright (c) 2002-2012 by SAS Institute Inc., Cary, NC, USA. 
+NOTE: SAS (r) Proprietary Software 9.4 (TS1M1) 
+      Licensed to UNIVERSITY OF MICHIGAN - T&R - SFA, Site 70080438.
+NOTE: This session is executing on the Linux 2.6.32-754.9.1.el6.x86_64 (LIN X64) platform.
+
+
+
+NOTE: Updated analytical products:
+      
+      SAS/STAT 13.1
+      SAS/ETS 13.1
+      SAS/OR 13.1
+      SAS/IML 13.1
+      SAS/QC 13.1
+
+NOTE: Additional host information:
+
+ Linux LIN X64 2.6.32-754.9.1.el6.x86_64 #1 SMP Wed Nov 21 15:08:21 EST 2018 x86_64 Red Hat Enterprise Linux Server release 6.10 
+      (Santiago) 
+
+NOTE: SAS initialization used:
+      real time           0.04 seconds
+      cpu time            0.04 seconds
+      
+1          /* Problem Set 6, Question 3
+2           * Stats 506, Fall 2019
+3           *
+4           * Analyze home temperatures and heating types in winter
+5           * using the 2015 RECS data. This is a repeat of parts b and c
+6           * from question 2.  We make use of the long weights from there.
+7           * In part c, we also make use of temps_long from question 2, part c.
+8           *
+9           * Updated: December 11, 2019
+10          * Author: James Henderson
+11          *
+12          */
+13         /* 80: ---------------------------------------------------------------------- */
+14         
+15         /* data library: ------------------------------------------------------------ */
+16         %let path = ~/github/ps506/F19/ps6/;
+17         libname lib "&path.";
+NOTE: Libref LIB was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /afs/umich.edu/user/j/b/jbhender/github/ps506/F19/ps6
+18         
+19         /* macro library: ----------------------------------------------------------- */
+20         filename autodir "&path./sasmacro"; /* csvexport.sas lives here */
+21         options sasautos = (autodir, sasautos);
+22         
+23         /* macro variables: --------------------------------------------------------- */
+24         %let z = quantile('NORMAL', .975);
+25         
+26         /* (c) avg temp by type (home, gone, night) and census division: ------------ */
+27         proc sql;
+28         
+29          /** point estimates **/
+30          create table avg_temps as
+31           select division, type, sum(temp * nweight) / sum(nweight) as avg_temp
+2                                                          The SAS System                          08:03 Thursday, December 12, 2019
+
+32           from lib.temp_long
+33           group by division, type;
+NOTE: Table WORK.AVG_TEMPS created, with 30 rows and 3 columns.
+
+34         
+35          /** replicate estiamtes **/
+36          create table avg_temps_repl as
+37           select division, type, repl, sum(temp*brrwt) / sum(brrwt) as avg_temp_repl
+38           from lib.temp_long t
+39           left join lib.brrwt_long b /* cartesian join */
+40           on t.doeid = b.doeid
+41           group by division, type, repl;
+NOTE: Table WORK.AVG_TEMPS_REPL created, with 2880 rows and 4 columns.
+
+42         
+43          /** standard errors **/
+44          create table q3c_result as
+45           select t.division, t.type, t.avg_temp,
+46            2*sqrt(mean( (r.avg_temp_repl - t.avg_temp)**2 )) as se
+47           from avg_temps_repl r
+48           left join avg_temps t
+49           on r.division = t.division and r.type = t.type
+50           group by t.avg_temp, t.division, t.type
+51           order by division, type;
+NOTE: Table WORK.Q3C_RESULT created, with 30 rows and 4 columns.
+
+52         
+53         quit;
+NOTE: PROCEDURE SQL used (Total process time):
+      real time           0.65 seconds
+      cpu time            1.40 seconds
+      
+
+54         run;
+55         
+56         data q3c_result;
+57          set q3c_result;
+58          lwr = avg_temp - &z.*se;
+59          upr = avg_temp + &z.*se;
+60         run;
+
+NOTE: There were 30 observations read from the data set WORK.Q3C_RESULT.
+NOTE: The data set WORK.Q3C_RESULT has 30 observations and 6 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+61         
+62         
+63         /* export */
+64         %csvexport(q3c_result);
+
+65          /**********************************************************************
+66          *   PRODUCT:   SAS
+67          *   VERSION:   9.4
+68          *   CREATOR:   External File Interface
+69          *   DATE:      12DEC19
+3                                                          The SAS System                          08:03 Thursday, December 12, 2019
+
+70          *   DESC:      Generated SAS Datastep Code
+71          *   TEMPLATE SOURCE:  (None Specified.)
+72          ***********************************************************************/
+73             data _null_;
+74             %let _EFIERR_ = 0; /* set the ERROR detection macro variable */
+75             %let _EFIREC_ = 0;     /* clear export record count macro variable */
+76             file './q3c_result.csv' delimiter=',' DSD DROPOVER lrecl=32767;
+77             if _n_ = 1 then        /* write column names or labels */
+78              do;
+79                put
+80                   "DIVISION"
+81                ','
+82                   "type"
+83                ','
+84                   "avg_temp"
+85                ','
+86                   "se"
+87                ','
+88                   "lwr"
+89                ','
+90                   "upr"
+91                ;
+92              end;
+93            set  WORK.Q3C_RESULT   end=EFIEOD;
+94                format DIVISION best12. ;
+95                format type $8. ;
+96                format avg_temp best12. ;
+97                format se best12. ;
+98                format lwr best12. ;
+99                format upr best12. ;
+100             do;
+101               EFIOUT + 1;
+102               put DIVISION @;
+103               put type $ @;
+104               put avg_temp @;
+105               put se @;
+106               put lwr @;
+107               put upr ;
+108               ;
+109             end;
+110            if _ERROR_ then call symputx('_EFIERR_',1);  /* set ERROR detection macro variable */
+111            if EFIEOD then call symputx('_EFIREC_',EFIOUT);
+112            run;
+
+NOTE: The file './q3c_result.csv' is:
+      Filename=/afs/umich.edu/user/j/b/jbhender/github/ps506/F19/ps6/q3c_result.csv,
+      Owner Name=jbhender,Group Name=wheel,
+      Access Permission=-rw-r--r--,
+      Last Modified=12Dec2019:08:03:01
+
+NOTE: 31 records were written to the file './q3c_result.csv'.
+      The minimum record length was 33.
+      The maximum record length was 63.
+NOTE: There were 30 observations read from the data set WORK.Q3C_RESULT.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.01 seconds
+      
+4                                                          The SAS System                          08:03 Thursday, December 12, 2019
+
+
+30 records created in ./q3c_result.csv from WORK.Q3C_RESULT.
+  
+  
+NOTE: "./q3c_result.csv" file was successfully created.
+NOTE: PROCEDURE EXPORT used (Total process time):
+      real time           0.08 seconds
+      cpu time            0.06 seconds
+      
+
+113        run;
+114        
+115        /* 80: ---------------------------------------------------------------------- */
+116        
+
+NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
+NOTE: The SAS System used:
+      real time           0.81 seconds
+      cpu time            1.52 seconds
+      

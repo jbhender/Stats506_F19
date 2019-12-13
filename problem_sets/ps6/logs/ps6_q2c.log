@@ -1,0 +1,394 @@
+1                                                          The SAS System                          08:04 Thursday, December 12, 2019
+
+NOTE: Copyright (c) 2002-2012 by SAS Institute Inc., Cary, NC, USA. 
+NOTE: SAS (r) Proprietary Software 9.4 (TS1M1) 
+      Licensed to UNIVERSITY OF MICHIGAN - T&R - SFA, Site 70080438.
+NOTE: This session is executing on the Linux 2.6.32-754.9.1.el6.x86_64 (LIN X64) platform.
+
+
+
+NOTE: Updated analytical products:
+      
+      SAS/STAT 13.1
+      SAS/ETS 13.1
+      SAS/OR 13.1
+      SAS/IML 13.1
+      SAS/QC 13.1
+
+NOTE: Additional host information:
+
+ Linux LIN X64 2.6.32-754.9.1.el6.x86_64 #1 SMP Wed Nov 21 15:08:21 EST 2018 x86_64 Red Hat Enterprise Linux Server release 6.10 
+      (Santiago) 
+
+NOTE: SAS initialization used:
+      real time           0.04 seconds
+      cpu time            0.04 seconds
+      
+1          /* Problem Set 6, Question 2 part c
+2           * Stats 506, Fall 2019
+3           *
+4           * Analyze home temperatures in winter among homes that use space heating
+5           * using the 2015 RECS data.
+6           *
+7           * Updated: December 11, 2019
+8           * Author: James Henderson
+9           *
+10          */
+11         
+12         /* 80: ---------------------------------------------------------------------- */
+13         
+14         /* data library: ------------------------------------------------------------ */
+15         libname lib "~/github/ps506/F19/ps6/";
+NOTE: Libref LIB was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /afs/umich.edu/user/j/b/jbhender/github/ps506/F19/ps6
+16         
+17         /* macros and variables: ---------------------------------------------------- */
+18         %let z = quantile('NORMAL', .975);
+19         %macro csvexport(dataset, lib=work);
+20          proc export
+21            data = &lib..&dataset
+22            outfile = "./&dataset..csv"
+23            dbms = dlm
+24            replace;
+25           delimiter=",";
+26          run;
+27         %mend;
+28         
+29         /* (a) create long weights: ------------------------------------------------- */
+30         /* This code is commented out as it has been previously run */
+31         /***
+2                                                          The SAS System                          08:04 Thursday, December 12, 2019
+
+32         proc transpose data=lib.recs2015_public_v4 out=lib.brrwt_long prefix=brrwt;
+33          by doeid;
+34          var brrwt1-brrwt96;
+35         run;
+36         
+37         data lib.brrwt_long(rename=(brrwt1=brrwt));
+38          set lib.brrwt_long;
+39          repl = _name_;
+40          drop _name_;
+41         
+42         proc sort data=lib.brrwt_long out=lib.brrwt_long;
+43          by doeid repl;
+44         run;
+45         ***/
+46         
+47         /* (c): avg temps by type and census division: ------------------------------ */
+48         
+49         /** Transpose temp types to long **/
+50         proc transpose data=lib.recs2015_public_v4 out=lib.temp_long prefix=temp;
+51          by doeid nweight division;
+52          var temphome tempgone tempnite;
+53         run;
+
+NOTE: There were 5686 observations read from the data set LIB.RECS2015_PUBLIC_V4.
+NOTE: The data set LIB.TEMP_LONG has 17058 observations and 6 variables.
+NOTE: PROCEDURE TRANSPOSE used (Total process time):
+      real time           0.09 seconds
+      cpu time            0.08 seconds
+      
+
+54         
+55         data lib.temp_long;
+56          set lib.temp_long;
+57          where temp1 > 0;
+58          type = _name_;
+59          drop _name_ _label_;
+60          rename temp1 = temp;
+61         run;
+
+NOTE: There were 16284 observations read from the data set LIB.TEMP_LONG.
+      WHERE temp1>0;
+NOTE: The data set LIB.TEMP_LONG has 16284 observations and 5 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.00 seconds
+      
+
+62         
+63         proc sort data=lib.temp_long out=work.temp_long;
+64          by division type;
+65         run;
+
+NOTE: There were 16284 observations read from the data set LIB.TEMP_LONG.
+NOTE: The data set WORK.TEMP_LONG has 16284 observations and 5 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.03 seconds
+      
+3                                                          The SAS System                          08:04 Thursday, December 12, 2019
+
+
+66         
+67         /** point estimates **/
+68         proc summary data = work.temp_long;
+69          weight nweight;
+70          by division type;
+71          var temp;
+72          output out = work.avg_temps
+73            mean(temp) = avg_temp;
+74         run;
+
+NOTE: There were 16284 observations read from the data set WORK.TEMP_LONG.
+NOTE: The data set WORK.AVG_TEMPS has 30 observations and 5 variables.
+NOTE: PROCEDURE SUMMARY used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+75         
+76         /** replicate estimates **/
+77         
+78         /*** data step merge does not allow cartesian products in match merge***/
+79         data work.temps_repl_wide;
+80          merge lib.recs2015_public_v4(keep = doeid division temphome tempgone tempnite)
+81                lib.brrwt_long(keep = doeid repl);
+82          by doeid;
+83         run;
+
+NOTE: There were 5686 observations read from the data set LIB.RECS2015_PUBLIC_V4.
+NOTE: There were 545856 observations read from the data set LIB.BRRWT_LONG.
+NOTE: The data set WORK.TEMPS_REPL_WIDE has 545856 observations and 6 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.11 seconds
+      cpu time            0.12 seconds
+      
+
+84         
+85         proc sort data=work.temps_repl_wide out=work.temps_repl_wide;
+86          by doeid repl;
+87         
+
+NOTE: There were 545856 observations read from the data set WORK.TEMPS_REPL_WIDE.
+NOTE: The data set WORK.TEMPS_REPL_WIDE has 545856 observations and 6 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.12 seconds
+      cpu time            0.31 seconds
+      
+
+88         proc transpose data=work.temps_repl_wide out=work.temps_repl prefix=temp;
+89          by doeid repl division;
+90         run;
+
+NOTE: There were 545856 observations read from the data set WORK.TEMPS_REPL_WIDE.
+NOTE: The data set WORK.TEMPS_REPL has 1637568 observations and 6 variables.
+NOTE: PROCEDURE TRANSPOSE used (Total process time):
+      real time           0.71 seconds
+      cpu time            0.71 seconds
+      
+4                                                          The SAS System                          08:04 Thursday, December 12, 2019
+
+
+91         
+92         data work.temps_repl;
+93          merge work.temps_repl lib.brrwt_long;
+94          by doeid repl;
+95         
+
+NOTE: There were 1637568 observations read from the data set WORK.TEMPS_REPL.
+NOTE: There were 545856 observations read from the data set LIB.BRRWT_LONG.
+NOTE: The data set WORK.TEMPS_REPL has 1637568 observations and 7 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.85 seconds
+      cpu time            0.82 seconds
+      
+
+96         data work.temps_repl;
+97          set work.temps_repl;
+98          where temp1 > 0;
+99          type = _name_;
+100         drop _name_ _label_;
+101         rename temp1 = temp;
+102        
+
+NOTE: There were 1563264 observations read from the data set WORK.TEMPS_REPL.
+      WHERE temp1>0;
+NOTE: The data set WORK.TEMPS_REPL has 1563264 observations and 6 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.30 seconds
+      cpu time            0.30 seconds
+      
+
+103        proc sort data=work.temps_repl out=work.temps_repl;
+104         by division type repl;
+105        run;
+
+NOTE: There were 1563264 observations read from the data set WORK.TEMPS_REPL.
+NOTE: The data set WORK.TEMPS_REPL has 1563264 observations and 6 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.35 seconds
+      cpu time            1.01 seconds
+      
+
+106        
+107        proc summary data = work.temps_repl;
+108         weight brrwt;
+109         by division type repl;
+110         var temp;
+111         output out = work.avg_temps_repl
+112          mean(temp) = avg_temp_repl;
+113        run;
+
+NOTE: There were 1563264 observations read from the data set WORK.TEMPS_REPL.
+NOTE: The data set WORK.AVG_TEMPS_REPL has 2880 observations and 6 variables.
+NOTE: PROCEDURE SUMMARY used (Total process time):
+      real time           0.16 seconds
+      cpu time            0.17 seconds
+      
+
+5                                                          The SAS System                          08:04 Thursday, December 12, 2019
+
+114        
+115        /** mean squared differences **/
+116        data work.avg_temps_repl;
+117         merge work.avg_temps_repl work.avg_temps;
+118         by division type;
+119        run;
+
+NOTE: There were 2880 observations read from the data set WORK.AVG_TEMPS_REPL.
+NOTE: There were 30 observations read from the data set WORK.AVG_TEMPS.
+NOTE: The data set WORK.AVG_TEMPS_REPL has 2880 observations and 7 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+120        
+121        data work.avg_temps_repl;
+122         set work.avg_temps_repl;
+123         sq_error = (avg_temp_repl - avg_temp)**2;
+124        run;
+
+NOTE: There were 2880 observations read from the data set WORK.AVG_TEMPS_REPL.
+NOTE: The data set WORK.AVG_TEMPS_REPL has 2880 observations and 8 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+125        
+126        proc summary data = work.avg_temps_repl;
+127         by division type;
+128         var sq_error;
+129         output out = work.avg_temp_se
+130           mean(sq_error) = mse;
+131        run;
+
+NOTE: There were 2880 observations read from the data set WORK.AVG_TEMPS_REPL.
+NOTE: The data set WORK.AVG_TEMP_SE has 30 observations and 5 variables.
+NOTE: PROCEDURE SUMMARY used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+132        
+133        /** standard errors and confidence limits **/
+134        data work.q2c_result;
+135          merge work.avg_temps work.avg_temp_se;
+136          by division type;
+137          se = 2 * sqrt(mse);
+138          lwr = avg_temp - &z.*se;
+139          upr = avg_temp + &z.*se;
+140          keep division type avg_temp se lwr upr;
+141        run;
+
+NOTE: There were 30 observations read from the data set WORK.AVG_TEMPS.
+NOTE: There were 30 observations read from the data set WORK.AVG_TEMP_SE.
+NOTE: The data set WORK.Q2C_RESULT has 30 observations and 6 variables.
+NOTE: DATA statement used (Total process time):
+6                                                          The SAS System                          08:04 Thursday, December 12, 2019
+
+      real time           0.00 seconds
+      cpu time            0.01 seconds
+      
+
+142        
+143        /** export **/
+144        %csvexport(q2c_result, lib=work);
+
+145         /**********************************************************************
+146         *   PRODUCT:   SAS
+147         *   VERSION:   9.4
+148         *   CREATOR:   External File Interface
+149         *   DATE:      12DEC19
+150         *   DESC:      Generated SAS Datastep Code
+151         *   TEMPLATE SOURCE:  (None Specified.)
+152         ***********************************************************************/
+153            data _null_;
+154            %let _EFIERR_ = 0; /* set the ERROR detection macro variable */
+155            %let _EFIREC_ = 0;     /* clear export record count macro variable */
+156            file './q2c_result.csv' delimiter=',' DSD DROPOVER lrecl=32767;
+157            if _n_ = 1 then        /* write column names or labels */
+158             do;
+159               put
+160                  "DIVISION"
+161               ','
+162                  "type"
+163               ','
+164                  "avg_temp"
+165               ','
+166                  "se"
+167               ','
+168                  "lwr"
+169               ','
+170                  "upr"
+171               ;
+172             end;
+173           set  WORK.Q2C_RESULT   end=EFIEOD;
+174               format DIVISION best12. ;
+175               format type $8. ;
+176               format avg_temp best12. ;
+177               format se best12. ;
+178               format lwr best12. ;
+179               format upr best12. ;
+180             do;
+181               EFIOUT + 1;
+182               put DIVISION @;
+183               put type $ @;
+184               put avg_temp @;
+185               put se @;
+186               put lwr @;
+187               put upr ;
+188               ;
+189             end;
+190            if _ERROR_ then call symputx('_EFIERR_',1);  /* set ERROR detection macro variable */
+191            if EFIEOD then call symputx('_EFIREC_',EFIOUT);
+192            run;
+
+NOTE: The file './q2c_result.csv' is:
+7                                                          The SAS System                          08:04 Thursday, December 12, 2019
+
+      Filename=/afs/umich.edu/user/j/b/jbhender/github/ps506/F19/ps6/q2c_result.csv,
+      Owner Name=jbhender,Group Name=wheel,
+      Access Permission=-rw-r--r--,
+      Last Modified=12Dec2019:08:04:24
+
+NOTE: 31 records were written to the file './q2c_result.csv'.
+      The minimum record length was 33.
+      The maximum record length was 63.
+NOTE: There were 30 observations read from the data set WORK.Q2C_RESULT.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+30 records created in ./q2c_result.csv from WORK.Q2C_RESULT.
+  
+  
+NOTE: "./q2c_result.csv" file was successfully created.
+NOTE: PROCEDURE EXPORT used (Total process time):
+      real time           0.07 seconds
+      cpu time            0.07 seconds
+      
+
+193        
+194        /* 80: ---------------------------------------------------------------------- */
+195        
+
+NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
+NOTE: The SAS System used:
+      real time           2.95 seconds
+      cpu time            3.68 seconds
+      

@@ -1,0 +1,4 @@
+CovParm,Estimate,StdErr,ZValue,ProbZ
+subject_nr,0.2498,0.06250,4.00,<.0001
+Exemplar,0.04642,0.02617,1.77,0.0380
+Residual,1.5679,0.07065,22.19,<.0001

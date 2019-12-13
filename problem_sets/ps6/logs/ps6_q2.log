@@ -1,0 +1,418 @@
+1                                                          The SAS System                         12:03 Wednesday, December 11, 2019
+
+NOTE: Copyright (c) 2002-2012 by SAS Institute Inc., Cary, NC, USA. 
+NOTE: SAS (r) Proprietary Software 9.4 (TS1M1) 
+      Licensed to UNIVERSITY OF MICHIGAN - T&R - SFA, Site 70080438.
+NOTE: This session is executing on the Linux 2.6.32-754.9.1.el6.x86_64 (LIN X64) platform.
+
+
+
+NOTE: Updated analytical products:
+      
+      SAS/STAT 13.1
+      SAS/ETS 13.1
+      SAS/OR 13.1
+      SAS/IML 13.1
+      SAS/QC 13.1
+
+NOTE: Additional host information:
+
+ Linux LIN X64 2.6.32-754.9.1.el6.x86_64 #1 SMP Wed Nov 21 15:08:21 EST 2018 x86_64 Red Hat Enterprise Linux Server release 6.10 
+      (Santiago) 
+
+NOTE: SAS initialization used:
+      real time           0.03 seconds
+      cpu time            0.01 seconds
+      
+1          /* Problem Set 6, Question 2
+2           * Stats 506, Fall 2019
+3           *
+4           * Analyze home temperatures and heating types in winter
+5           * using the 2015 RECS data.
+6           *
+7           * Updated: December 11, 2019
+8           * Author: James Henderson
+9           *
+10          */
+11         
+12         /* 80: ---------------------------------------------------------------------- */
+13         
+14         /* data library: ------------------------------------------------------------ */
+15         libname lib "~/github/ps506/F19/ps6/";
+NOTE: Libref LIB was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /afs/umich.edu/user/j/b/jbhender/github/ps506/F19/ps6
+16         
+17         /* macros and variables: ---------------------------------------------------- */
+18         %let z = quantile('NORMAL', .975);
+19         %macro csvexport(dataset, lib=work);
+20          proc export
+21            data = &lib..&dataset
+22            outfile = "./&dataset..csv"
+23            dbms = dlm
+24            replace;
+25           delimiter=",";
+26          run;
+27         %mend;
+28         
+29         /* (a) create long weights: ------------------------------------------------- */
+30         
+31         proc transpose data=lib.recs2015_public_v4 out=lib.brrwt_long prefix=brrwt;
+2                                                          The SAS System                         12:03 Wednesday, December 11, 2019
+
+32          by DOEID;
+33          var brrwt1-brrwt96;
+34         run;
+
+NOTE: There were 5686 observations read from the data set LIB.RECS2015_PUBLIC_V4.
+NOTE: The data set LIB.BRRWT_LONG has 545856 observations and 4 variables.
+NOTE: PROCEDURE TRANSPOSE used (Total process time):
+      real time           0.54 seconds
+      cpu time            0.20 seconds
+      
+
+35         
+36         data lib.brrwt_long(rename=(brrwt1=brrwt));
+37          set lib.brrwt_long;
+38          repl = _name_;
+39          drop _name_;
+40         
+
+NOTE: There were 545856 observations read from the data set LIB.BRRWT_LONG.
+NOTE: The data set LIB.BRRWT_LONG has 545856 observations and 4 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.54 seconds
+      cpu time            0.19 seconds
+      
+
+41         proc sort data=lib.brrwt_long out=lib.brrwt_long;
+42          by doeid repl;
+43         
+44         /* (b) national average home temperature at night : -------------------------- */
+45         
+46         /** point estimates **/
+
+NOTE: There were 545856 observations read from the data set LIB.BRRWT_LONG.
+NOTE: The data set LIB.BRRWT_LONG has 545856 observations and 4 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.53 seconds
+      cpu time            0.36 seconds
+      
+
+47         proc means data=lib.recs2015_public_v4;
+48           weight nweight;
+49           var tempnite;
+50           output out=nighttemp mean=avg_night_temp;
+51           where tempnite > 0 ;
+52         run;
+
+NOTE: There were 5428 observations read from the data set LIB.RECS2015_PUBLIC_V4.
+      WHERE tempnite>0;
+NOTE: The data set WORK.NIGHTTEMP has 1 observations and 3 variables.
+NOTE: The PROCEDURE MEANS printed page 1.
+NOTE: PROCEDURE MEANS used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.02 seconds
+      
+
+53         
+54         /** replicate estimates **/
+55         
+3                                                          The SAS System                         12:03 Wednesday, December 11, 2019
+
+56         /*** merge ***/
+57         data nighttemp_long;
+58           merge lib.recs2015_public_v4(keep=doeid tempnite)
+59                 lib.brrwt_long(keep=doeid repl brrwt);
+60           by doeid;
+61         run;
+
+NOTE: There were 5686 observations read from the data set LIB.RECS2015_PUBLIC_V4.
+NOTE: There were 545856 observations read from the data set LIB.BRRWT_LONG.
+NOTE: The data set WORK.NIGHTTEMP_LONG has 545856 observations and 4 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.09 seconds
+      cpu time            0.10 seconds
+      
+
+62         
+63         /*** limit and prep for option 1 ***/
+64         data nighttemp_long;
+65           set nighttemp_long;
+66           where tempnite > 0;
+67           tempnite_weighted = brrwt * tempnite; /* For option 1 below. */
+68         run;
+
+NOTE: There were 521088 observations read from the data set WORK.NIGHTTEMP_LONG.
+      WHERE tempnite>0;
+NOTE: The data set WORK.NIGHTTEMP_LONG has 521088 observations and 5 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.08 seconds
+      cpu time            0.08 seconds
+      
+
+69         
+70         /*** sort by replicate for use in by below ***/
+71         proc sort data=nighttemp_long out=nighttemp_long;
+72          by repl;
+73         
+74         /*** option 1: use proc summary with weighted temps from previous step
+75         proc summary data=nighttemp_long;
+76          by repl;
+77          output out=nighttemp_repl1
+78            sum(tempnite_weighted) = sum_temp
+79            sum(brrwt) = sum_weight;
+80         run;
+81         
+82         data nighttemp_repl1;
+83          set nighttemp_repl1;
+84          avg_temp_nite_repl = sum_temp / sum_weight;
+85         run;
+86         ***/
+87         
+88         /*** option 2: use proc summary with a weight statement or option ***/
+89         /**** preferred option ****/
+
+NOTE: There were 521088 observations read from the data set WORK.NIGHTTEMP_LONG.
+NOTE: The data set WORK.NIGHTTEMP_LONG has 521088 observations and 5 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           0.11 seconds
+      cpu time            0.34 seconds
+4                                                          The SAS System                         12:03 Wednesday, December 11, 2019
+
+      
+
+90         proc summary data=nighttemp_long;
+91          by repl;
+92          var tempnite; /* / weight = brrwt */
+93          output out = nighttemp_repl2
+94            mean(tempnite) = avg_night_temp_repl;
+95          weight brrwt;
+96         run;
+
+NOTE: There were 521088 observations read from the data set WORK.NIGHTTEMP_LONG.
+NOTE: The data set WORK.NIGHTTEMP_REPL2 has 96 observations and 4 variables.
+NOTE: PROCEDURE SUMMARY used (Total process time):
+      real time           0.04 seconds
+      cpu time            0.04 seconds
+      
+
+97         
+98         /*** option 3: use proc means with a weight statement as above
+99         proc means data=nighttemp_long noprint;
+100         by repl;
+101         weight brrwt;
+102         var tempnite;
+103         output out=nighttemp_repl3 mean=avg_night_temp_repl;
+104        run;
+105        ***/
+106        
+107        /*** to check all 3 options are equal
+108        options obs=10;
+109        proc print data=nighttemp_repl1;
+110        proc print data=nighttemp_repl2;
+111        proc print data=nighttemp_repl3;
+112        run;
+113        ***/
+114        
+115        /** standard errors for avg_nite_temp **/
+116        
+117        /*** merge replicate and point estimates ***/
+118        data nighttemp_repl2;
+119         set nighttemp_repl2;
+120         help_merge = 1;
+121        
+
+NOTE: There were 96 observations read from the data set WORK.NIGHTTEMP_REPL2.
+NOTE: The data set WORK.NIGHTTEMP_REPL2 has 96 observations and 5 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.01 seconds
+      
+
+122        data nighttemp;
+123         set nighttemp;
+124         help_merge = 1;
+125        
+
+NOTE: There were 1 observations read from the data set WORK.NIGHTTEMP.
+NOTE: The data set WORK.NIGHTTEMP has 1 observations and 4 variables.
+NOTE: DATA statement used (Total process time):
+5                                                          The SAS System                         12:03 Wednesday, December 11, 2019
+
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+126        data nighttemp_repl;
+127         merge nighttemp_repl2 nighttemp;
+128         by help_merge;
+129        run;
+
+NOTE: There were 96 observations read from the data set WORK.NIGHTTEMP_REPL2.
+NOTE: There were 1 observations read from the data set WORK.NIGHTTEMP.
+NOTE: The data set WORK.NIGHTTEMP_REPL has 96 observations and 6 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+130        
+131        /*** compute squared errors ***/
+132        data nighttemp_repl;
+133         set nighttemp_repl;
+134         sq_error = (avg_night_temp_repl - avg_night_temp)**2;
+135        run;
+
+NOTE: There were 96 observations read from the data set WORK.NIGHTTEMP_REPL.
+NOTE: The data set WORK.NIGHTTEMP_REPL has 96 observations and 7 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+136        
+137        /*** compute unscaled MSE ***/
+138        proc summary data=nighttemp_repl;
+139         by help_merge; /* so we can merge on it later */
+140         var sq_error;
+141         output out=nighttemp_se
+142           mean(sq_error) = mse;
+143        run;
+
+NOTE: There were 96 observations read from the data set WORK.NIGHTTEMP_REPL.
+NOTE: The data set WORK.NIGHTTEMP_SE has 1 observations and 4 variables.
+NOTE: PROCEDURE SUMMARY used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+144        
+145        /**merge with point estimate, scale standard error, and form CI **/
+146        data q2b_result;
+147         merge nighttemp nighttemp_se;
+148         by help_merge;
+149        run;
+
+NOTE: There were 1 observations read from the data set WORK.NIGHTTEMP.
+NOTE: There were 1 observations read from the data set WORK.NIGHTTEMP_SE.
+NOTE: The data set WORK.Q2B_RESULT has 1 observations and 5 variables.
+NOTE: DATA statement used (Total process time):
+6                                                          The SAS System                         12:03 Wednesday, December 11, 2019
+
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+150        
+151        data q2b_result;
+152         set q2b_result;
+153         se = 2*sqrt(mse);
+154         lwr = avg_night_temp - &z.*se;
+155         upr = avg_night_temp + &z.*se;
+156        run;
+
+NOTE: There were 1 observations read from the data set WORK.Q2B_RESULT.
+NOTE: The data set WORK.Q2B_RESULT has 1 observations and 8 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+157        
+158        /* export results */
+159        %csvexport(q2b_result, lib=work)
+
+160         /**********************************************************************
+161         *   PRODUCT:   SAS
+162         *   VERSION:   9.4
+163         *   CREATOR:   External File Interface
+164         *   DATE:      11DEC19
+165         *   DESC:      Generated SAS Datastep Code
+166         *   TEMPLATE SOURCE:  (None Specified.)
+167         ***********************************************************************/
+168            data _null_;
+169            %let _EFIERR_ = 0; /* set the ERROR detection macro variable */
+170            %let _EFIREC_ = 0;     /* clear export record count macro variable */
+171            file './q2b_result.csv' delimiter=',' DSD DROPOVER lrecl=32767;
+172            if _n_ = 1 then        /* write column names or labels */
+173             do;
+174               put
+175                  "_TYPE_"
+176               ','
+177                  "_FREQ_"
+178               ','
+179                  "avg_night_temp"
+180               ','
+181                  "help_merge"
+182               ','
+183                  "mse"
+184               ','
+185                  "se"
+186               ','
+187                  "lwr"
+188               ','
+189                  "upr"
+190               ;
+191             end;
+192           set  WORK.Q2B_RESULT   end=EFIEOD;
+193               format _TYPE_ best12. ;
+194               format _FREQ_ best12. ;
+7                                                          The SAS System                         12:03 Wednesday, December 11, 2019
+
+195               format avg_night_temp best12. ;
+196               format help_merge best12. ;
+197               format mse best12. ;
+198               format se best12. ;
+199               format lwr best12. ;
+200               format upr best12. ;
+201             do;
+202               EFIOUT + 1;
+203               put _TYPE_ @;
+204               put _FREQ_ @;
+205               put avg_night_temp @;
+206               put help_merge @;
+207               put mse @;
+208               put se @;
+209               put lwr @;
+210               put upr ;
+211               ;
+212             end;
+213            if _ERROR_ then call symputx('_EFIERR_',1);  /* set ERROR detection macro variable */
+214            if EFIEOD then call symputx('_EFIREC_',EFIOUT);
+215            run;
+
+NOTE: The file './q2b_result.csv' is:
+      Filename=/afs/umich.edu/user/j/b/jbhender/github/ps506/F19/ps6/q2b_result.csv,
+      Owner Name=jbhender,Group Name=wheel,
+      Access Permission=-rw-r--r--,
+      Last Modified=11Dec2019:12:03:22
+
+NOTE: 2 records were written to the file './q2b_result.csv'.
+      The minimum record length was 54.
+      The maximum record length was 71.
+NOTE: There were 1 observations read from the data set WORK.Q2B_RESULT.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.01 seconds
+      
+
+1 records created in ./q2b_result.csv from WORK.Q2B_RESULT.
+  
+  
+NOTE: "./q2b_result.csv" file was successfully created.
+NOTE: PROCEDURE EXPORT used (Total process time):
+      real time           0.04 seconds
+      cpu time            0.04 seconds
+      
+
+216        run;
+217        
+218        /* 80: ---------------------------------------------------------------------- */
+219        
+
+NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
+NOTE: The SAS System used:
+      real time           2.11 seconds
+      cpu time            1.40 seconds
+      

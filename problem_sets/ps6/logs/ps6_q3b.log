@@ -1,0 +1,195 @@
+1                                                          The SAS System                         13:43 Wednesday, December 11, 2019
+
+NOTE: Copyright (c) 2002-2012 by SAS Institute Inc., Cary, NC, USA. 
+NOTE: SAS (r) Proprietary Software 9.4 (TS1M1) 
+      Licensed to UNIVERSITY OF MICHIGAN - T&R - SFA, Site 70080438.
+NOTE: This session is executing on the Linux 2.6.32-754.9.1.el6.x86_64 (LIN X64) platform.
+
+
+
+NOTE: Updated analytical products:
+      
+      SAS/STAT 13.1
+      SAS/ETS 13.1
+      SAS/OR 13.1
+      SAS/IML 13.1
+      SAS/QC 13.1
+
+NOTE: Additional host information:
+
+ Linux LIN X64 2.6.32-754.9.1.el6.x86_64 #1 SMP Wed Nov 21 15:08:21 EST 2018 x86_64 Red Hat Enterprise Linux Server release 6.10 
+      (Santiago) 
+
+NOTE: SAS initialization used:
+      real time           0.03 seconds
+      cpu time            0.02 seconds
+      
+1          /* Problem Set 6, Question 3
+2           * Stats 506, Fall 2019
+3           *
+4           * Analyze home temperatures and heating types in winter
+5           * using the 2015 RECS data. This is a repeat of part b
+6           * from question 2.  We make use of the long weights from part a of that
+7           * quesiton.
+8           *
+9           * Updated: December 11, 2019
+10          * Author: James Henderson
+11          *
+12          */
+13         /* 80: ---------------------------------------------------------------------- */
+14         
+15         /* data library: ------------------------------------------------------------ */
+16         %let path = ~/github/ps506/F19/ps6/;
+17         libname lib "&path.";
+NOTE: Libref LIB was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /afs/umich.edu/user/j/b/jbhender/github/ps506/F19/ps6
+18         
+19         /* macro library: ----------------------------------------------------------- */
+20         filename autodir "&path./sasmacro"; /* csvexport.sas lives here */
+21         options sasautos = (autodir, sasautos);
+22         
+23         /* macro variables: --------------------------------------------------------- */
+24         %let z = quantile('NORMAL', .975);
+25         
+26         /* (b) national average home temperature at night : ------------------------- */
+27         proc sql;
+28         
+29          /** point estimates **/
+30          create table nighttemp as
+31           select sum(tempnite * nweight) / sum(nweight) as avg_night_temp,
+2                                                          The SAS System                         13:43 Wednesday, December 11, 2019
+
+32                  1 as help_merge
+33           from lib.recs2015_public_v4
+34           where tempnite > 0;
+NOTE: Table WORK.NIGHTTEMP created, with 1 rows and 2 columns.
+
+35         
+36          /** replicate estimates **/
+37          create table nighttemp_repl as
+38           select sum(r.tempnite * b.brrwt) / sum(b.brrwt) as avg_night_temp_repl,
+39                  1 as help_merge
+40           from lib.brrwt_long b
+41           left join lib.recs2015_public_v4 r
+42           on r.doeid = b.doeid
+43           where r.tempnite > 0
+44           group by repl;
+NOTE: Table WORK.NIGHTTEMP_REPL created, with 96 rows and 2 columns.
+
+45         
+46          /** standard error **/
+47          create table q3b_result as
+48           select n0.avg_night_temp,
+49                  2*sqrt(mean( (n1.avg_night_temp_repl - n0.avg_night_temp)**2 )) as se
+50           from nighttemp_repl n1
+51           left join nighttemp n0
+52           on n1.help_merge = n0.help_merge
+53           group by n0.avg_night_temp;
+NOTE: Table WORK.Q3B_RESULT created, with 1 rows and 2 columns.
+
+54         
+55         quit;
+NOTE: PROCEDURE SQL used (Total process time):
+      real time           0.19 seconds
+      cpu time            0.33 seconds
+      
+
+56         run;
+57         
+58         data q3b_result;
+59          set q3b_result;
+60          lwr = avg_night_temp - &z.*se;
+61          upr = avg_night_temp + &z.*se;
+62         run;
+
+NOTE: There were 1 observations read from the data set WORK.Q3B_RESULT.
+NOTE: The data set WORK.Q3B_RESULT has 1 observations and 4 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+63         
+64         /* export */
+65         %csvexport(q3b_result);
+
+66          /**********************************************************************
+67          *   PRODUCT:   SAS
+68          *   VERSION:   9.4
+69          *   CREATOR:   External File Interface
+3                                                          The SAS System                         13:43 Wednesday, December 11, 2019
+
+70          *   DATE:      11DEC19
+71          *   DESC:      Generated SAS Datastep Code
+72          *   TEMPLATE SOURCE:  (None Specified.)
+73          ***********************************************************************/
+74             data _null_;
+75             %let _EFIERR_ = 0; /* set the ERROR detection macro variable */
+76             %let _EFIREC_ = 0;     /* clear export record count macro variable */
+77             file './q3b_result.csv' delimiter=',' DSD DROPOVER lrecl=32767;
+78             if _n_ = 1 then        /* write column names or labels */
+79              do;
+80                put
+81                   "avg_night_temp"
+82                ','
+83                   "se"
+84                ','
+85                   "lwr"
+86                ','
+87                   "upr"
+88                ;
+89              end;
+90            set  WORK.Q3B_RESULT   end=EFIEOD;
+91                format avg_night_temp best12. ;
+92                format se best12. ;
+93                format lwr best12. ;
+94                format upr best12. ;
+95              do;
+96                EFIOUT + 1;
+97                put avg_night_temp @;
+98                put se @;
+99                put lwr @;
+100               put upr ;
+101               ;
+102             end;
+103            if _ERROR_ then call symputx('_EFIERR_',1);  /* set ERROR detection macro variable */
+104            if EFIEOD then call symputx('_EFIREC_',EFIOUT);
+105            run;
+
+NOTE: The file './q3b_result.csv' is:
+      Filename=/afs/umich.edu/user/j/b/jbhender/github/ps506/F19/ps6/q3b_result.csv,
+      Owner Name=jbhender,Group Name=wheel,
+      Access Permission=-rw-r--r--,
+      Last Modified=11Dec2019:13:43:54
+
+NOTE: 2 records were written to the file './q3b_result.csv'.
+      The minimum record length was 25.
+      The maximum record length was 51.
+NOTE: There were 1 observations read from the data set WORK.Q3B_RESULT.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+1 records created in ./q3b_result.csv from WORK.Q3B_RESULT.
+  
+  
+NOTE: "./q3b_result.csv" file was successfully created.
+NOTE: PROCEDURE EXPORT used (Total process time):
+      real time           0.04 seconds
+4                                                          The SAS System                         13:43 Wednesday, December 11, 2019
+
+      cpu time            0.04 seconds
+      
+
+106        run;
+107        
+108        /* 80: ---------------------------------------------------------------------- */
+109        
+
+NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
+NOTE: The SAS System used:
+      real time           0.28 seconds
+      cpu time            0.39 seconds
+      

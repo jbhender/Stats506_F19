@@ -1,0 +1,935 @@
+1                                                          The SAS System                          19:05 Thursday, December 12, 2019
+
+NOTE: Copyright (c) 2002-2012 by SAS Institute Inc., Cary, NC, USA. 
+NOTE: SAS (r) Proprietary Software 9.4 (TS1M1) 
+      Licensed to UNIVERSITY OF MICHIGAN - T&R - SFA, Site 70080438.
+NOTE: This session is executing on the Linux 2.6.32-754.9.1.el6.x86_64 (LIN X64) platform.
+
+
+
+NOTE: Updated analytical products:
+      
+      SAS/STAT 13.1
+      SAS/ETS 13.1
+      SAS/OR 13.1
+      SAS/IML 13.1
+      SAS/QC 13.1
+
+NOTE: Additional host information:
+
+ Linux LIN X64 2.6.32-754.9.1.el6.x86_64 #1 SMP Wed Nov 21 15:08:21 EST 2018 x86_64 Red Hat Enterprise Linux Server release 6.10 
+      (Santiago) 
+
+NOTE: SAS initialization used:
+      real time           0.26 seconds
+      cpu time            0.04 seconds
+      
+1          /* Problem Set 6, Question 1
+2           * Stats 506, Fall 2019
+3           *
+4           * In this problem, we re-analyze the (computer) mouse tracking data from
+5           * problem sets 1, 2, and 4.
+6           *
+7           * Updated: December 2, 2019
+8           * Author: James Henderson
+9           */
+10         
+11         /* 80: ---------------------------------------------------------------------- */
+12         
+13         /* libnames:----------------------------------------------------------------- */
+14         libname mylib '~/github/ps506/F19/ps6';
+NOTE: Libref MYLIB was successfully assigned as follows: 
+      Engine:        V9 
+      Physical Name: /afs/umich.edu/user/j/b/jbhender/github/ps506/F19/ps6
+15         %let path = ~/github/ps506/F19/ps4;
+16         
+17         /* data import: ------------------------------------------------------------- */
+18         
+19         proc import
+20           datafile = "&path./mousetrap_data.csv"
+21           out = mouse
+22           replace;
+23          delimiter = ',';
+24          getnames = yes;
+25         run;
+
+26          /**********************************************************************
+27          *   PRODUCT:   SAS
+28          *   VERSION:   9.4
+29          *   CREATOR:   External File Interface
+30          *   DATE:      12DEC19
+2                                                          The SAS System                          19:05 Thursday, December 12, 2019
+
+31          *   DESC:      Generated SAS Datastep Code
+32          *   TEMPLATE SOURCE:  (None Specified.)
+33          ***********************************************************************/
+34             data WORK.MOUSE    ;
+35             %let _EFIERR_ = 0; /* set the ERROR detection macro variable */
+36             infile '~/github/ps506/F19/ps4/mousetrap_data.csv' delimiter = ',' MISSOVER DSD lrecl=32767 firstobs=2 ;
+37                informat subject_nr best32. ;
+38                informat count_trial best32. ;
+39                informat tot_dist best32. ;
+40                informat max_abs_dev best32. ;
+41                informat avg_abs_dev best32. ;
+42                informat AUC best32. ;
+43                informat Condition $8. ;
+44                informat Exemplar $13. ;
+45                format subject_nr best12. ;
+46                format count_trial best12. ;
+47                format tot_dist best12. ;
+48                format max_abs_dev best12. ;
+49                format avg_abs_dev best12. ;
+50                format AUC best12. ;
+51                format Condition $8. ;
+52                format Exemplar $13. ;
+53             input
+54                         subject_nr
+55                         count_trial
+56                         tot_dist
+57                         max_abs_dev
+58                         avg_abs_dev
+59                         AUC
+60                         Condition $
+61                         Exemplar $
+62             ;
+63             if _ERROR_ then call symputx('_EFIERR_',1);  /* set ERROR detection macro variable */
+64             run;
+
+NOTE: The infile '~/github/ps506/F19/ps4/mousetrap_data.csv' is:
+      Filename=/afs/umich.edu/user/j/b/jbhender/github/ps506/F19/ps4/mousetrap_data.csv,
+      Owner Name=jbhender,Group Name=wheel,
+      Access Permission=-rw-r--r--,
+      Last Modified=21Nov2019:12:46:58,
+      File Size (bytes)=101037
+
+NOTE: 1064 records were read from the infile '~/github/ps506/F19/ps4/mousetrap_data.csv'.
+      The minimum record length was 78.
+      The maximum record length was 104.
+NOTE: The data set WORK.MOUSE has 1064 observations and 8 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.03 seconds
+      cpu time            0.02 seconds
+      
+
+1064 rows created in WORK.MOUSE from ~/github/ps506/F19/ps4/mousetrap_data.csv.
+  
+  
+  
+NOTE: WORK.MOUSE data set was successfully created.
+NOTE: The data set WORK.MOUSE has 1064 observations and 8 variables.
+NOTE: PROCEDURE IMPORT used (Total process time):
+3                                                          The SAS System                          19:05 Thursday, December 12, 2019
+
+      real time           0.12 seconds
+      cpu time            0.09 seconds
+      
+
+65         
+66         /* prep for analysis: ------------------------------------------------------- */
+67         data mouse;
+68           set mouse;
+69           log_tot_dist = log(tot_dist);
+70           log_avg_abs_dev = log(avg_abs_dev);
+71           log_max_abs_dev = log(max_abs_dev);
+72           log_AUC = .;
+73           if AUC > 0 then
+74            log_AUC = log(AUC);
+75         
+76         /* Uncomment to run
+77         proc contents data=mouse;
+78         run;
+79         */
+80         
+81         /* fit first model: --------------------------------------------------------- */
+82         
+83         /* uncomment to run
+84         ods output
+85          SolutionF=fe_est_tot_dist
+86          CovParms=re_var_tot_dist;
+87         
+88         proc mixed data = mouse covtest;
+89          class Condition Exemplar subject_nr;
+90          model log_tot_dist = Condition / cl S;
+91          random subject_nr Exemplar / type=vc;
+92         run;
+93         
+94         proc export
+95          data = fe_est_tot_dist
+96          outfile = "./q1_results/fe_est_tot_dist.csv"
+97          dbms = dlm
+98          replace;
+99          delimiter=",";
+100        run;
+101        
+102        proc export
+103         data = re_var_tot_dist
+104         outfile = "./q1_results/re_var_tot_dist.csv"
+105         dbms = dlm
+106         replace;
+107         delimiter=",";
+108        run;
+109        
+110        */
+111        
+112        /* macro to fit multiple models: -------------------------------------------- */
+113        %macro fit_model(var);
+114        
+115         /* ods setup */
+116         ods output
+117          SolutionF=fe_est_tot_dist
+118          CovParms=re_var_tot_dist;
+4                                                          The SAS System                          19:05 Thursday, December 12, 2019
+
+119        
+120         /* model fitting */
+121         proc mixed data = mouse covtest;
+122          class Condition Exemplar subject_nr;
+123          model &var = Condition / cl S;
+124          random subject_nr Exemplar / type=vc cl;
+125         run;
+126        
+127         /* export results */
+128         proc export
+129          data = fe_est_tot_dist
+130          outfile = "./q1_results/fe_est_&var..csv"
+131          dbms = dlm
+132          replace;
+133          delimiter=",";
+134         run;
+135        
+136         proc export
+137          data = re_var_tot_dist
+138          outfile = "./q1_results/re_var_&var..csv"
+139          dbms = dlm
+140          replace;
+141          delimiter=",";
+142         run;
+143        
+144        %mend;
+145        
+146        /* use the macro for each variable: ----------------------------------------- */
+147        %fit_model(log_tot_dist)
+NOTE: There were 1064 observations read from the data set WORK.MOUSE.
+NOTE: The data set WORK.MOUSE has 1064 observations and 12 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.03 seconds
+      
+
+
+NOTE: Convergence criteria met.
+NOTE: The data set WORK.RE_VAR_TOT_DIST has 3 observations and 5 variables.
+NOTE: The data set WORK.FE_EST_TOT_DIST has 3 observations and 10 variables.
+NOTE: The PROCEDURE MIXED printed pages 1-4.
+NOTE: PROCEDURE MIXED used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.01 seconds
+      
+
+
+148         /**********************************************************************
+149         *   PRODUCT:   SAS
+150         *   VERSION:   9.4
+151         *   CREATOR:   External File Interface
+152         *   DATE:      12DEC19
+153         *   DESC:      Generated SAS Datastep Code
+154         *   TEMPLATE SOURCE:  (None Specified.)
+155         ***********************************************************************/
+156            data _null_;
+157            %let _EFIERR_ = 0; /* set the ERROR detection macro variable */
+158            %let _EFIREC_ = 0;     /* clear export record count macro variable */
+5                                                          The SAS System                          19:05 Thursday, December 12, 2019
+
+159            file './q1_results/fe_est_log_tot_dist.csv' delimiter=',' DSD DROPOVER lrecl=32767;
+160            if _n_ = 1 then        /* write column names or labels */
+161             do;
+162               put
+163                  "Effect"
+164               ','
+165                  "Condition"
+166               ','
+167                  "Estimate"
+168               ','
+169                  "StdErr"
+170               ','
+171                  "DF"
+172               ','
+173                  "tValue"
+174               ','
+175                  "Probt"
+176               ','
+177                  "Alpha"
+178               ','
+179                  "Lower"
+180               ','
+181                  "Upper"
+182               ;
+183             end;
+184           set  FE_EST_TOT_DIST   end=EFIEOD;
+185               format Effect $12. ;
+186               format Condition $8. ;
+187               format Estimate d8.4 ;
+188               format StdErr d8.4 ;
+189               format DF best4. ;
+190               format tValue 7.2 ;
+191               format Probt pvalue6.4 ;
+192               format Alpha best6. ;
+193               format Lower d8.4 ;
+194               format Upper d8.4 ;
+195             do;
+196               EFIOUT + 1;
+197               put Effect $ @;
+198               put Condition $ @;
+199               put Estimate @;
+200               put StdErr @;
+201               put DF @;
+202               put tValue @;
+203               put Probt @;
+204               put Alpha @;
+205               put Lower @;
+206               put Upper ;
+207               ;
+208             end;
+209            if _ERROR_ then call symputx('_EFIERR_',1);  /* set ERROR detection macro variable */
+210            if EFIEOD then call symputx('_EFIREC_',EFIOUT);
+211            run;
+
+NOTE: The file './q1_results/fe_est_log_tot_dist.csv' is:
+      Filename=/afs/umich.edu/user/j/b/jbhender/github/ps506/F19/ps6/q1_results/fe_est_log_tot_dist.csv,
+      Owner Name=jbhender,Group Name=wheel,
+      Access Permission=-rw-r--r--,
+6                                                          The SAS System                          19:05 Thursday, December 12, 2019
+
+      Last Modified=12Dec2019:19:05:13
+
+NOTE: 4 records were written to the file './q1_results/fe_est_log_tot_dist.csv'.
+      The minimum record length was 26.
+      The maximum record length was 69.
+NOTE: There were 3 observations read from the data set WORK.FE_EST_TOT_DIST.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.01 seconds
+      
+
+3 records created in ./q1_results/fe_est_log_tot_dist.csv from FE_EST_TOT_DIST.
+  
+  
+NOTE: "./q1_results/fe_est_log_tot_dist.csv" file was successfully created.
+NOTE: PROCEDURE EXPORT used (Total process time):
+      real time           0.10 seconds
+      cpu time            0.06 seconds
+      
+
+
+212         /**********************************************************************
+213         *   PRODUCT:   SAS
+214         *   VERSION:   9.4
+215         *   CREATOR:   External File Interface
+216         *   DATE:      12DEC19
+217         *   DESC:      Generated SAS Datastep Code
+218         *   TEMPLATE SOURCE:  (None Specified.)
+219         ***********************************************************************/
+220            data _null_;
+221            %let _EFIERR_ = 0; /* set the ERROR detection macro variable */
+222            %let _EFIREC_ = 0;     /* clear export record count macro variable */
+223            file './q1_results/re_var_log_tot_dist.csv' delimiter=',' DSD DROPOVER lrecl=32767;
+224            if _n_ = 1 then        /* write column names or labels */
+225             do;
+226               put
+227                  "CovParm"
+228               ','
+229                  "Estimate"
+230               ','
+231                  "StdErr"
+232               ','
+233                  "ZValue"
+234               ','
+235                  "ProbZ"
+236               ;
+237             end;
+238           set  RE_VAR_TOT_DIST   end=EFIEOD;
+239               format CovParm $11. ;
+240               format Estimate d8.4 ;
+241               format StdErr d8.4 ;
+242               format ZValue 6.2 ;
+243               format ProbZ pvalue6.4 ;
+244             do;
+245               EFIOUT + 1;
+246               put CovParm $ @;
+247               put Estimate @;
+248               put StdErr @;
+7                                                          The SAS System                          19:05 Thursday, December 12, 2019
+
+249               put ZValue @;
+250               put ProbZ ;
+251               ;
+252             end;
+253            if _ERROR_ then call symputx('_EFIERR_',1);  /* set ERROR detection macro variable */
+254            if EFIEOD then call symputx('_EFIREC_',EFIOUT);
+255            run;
+
+NOTE: The file './q1_results/re_var_log_tot_dist.csv' is:
+      Filename=/afs/umich.edu/user/j/b/jbhender/github/ps506/F19/ps6/q1_results/re_var_log_tot_dist.csv,
+      Owner Name=jbhender,Group Name=wheel,
+      Access Permission=-rw-r--r--,
+      Last Modified=12Dec2019:19:05:13
+
+NOTE: 4 records were written to the file './q1_results/re_var_log_tot_dist.csv'.
+      The minimum record length was 36.
+      The maximum record length was 40.
+NOTE: There were 3 observations read from the data set WORK.RE_VAR_TOT_DIST.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+3 records created in ./q1_results/re_var_log_tot_dist.csv from RE_VAR_TOT_DIST.
+  
+  
+NOTE: "./q1_results/re_var_log_tot_dist.csv" file was successfully created.
+NOTE: PROCEDURE EXPORT used (Total process time):
+      real time           0.08 seconds
+      cpu time            0.05 seconds
+      
+
+256        %fit_model(log_avg_abs_dev)
+
+NOTE: Convergence criteria met.
+NOTE: The data set WORK.RE_VAR_TOT_DIST has 3 observations and 5 variables.
+NOTE: The data set WORK.FE_EST_TOT_DIST has 3 observations and 10 variables.
+NOTE: The PROCEDURE MIXED printed pages 5-8.
+NOTE: PROCEDURE MIXED used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.01 seconds
+      
+
+
+257         /**********************************************************************
+258         *   PRODUCT:   SAS
+259         *   VERSION:   9.4
+260         *   CREATOR:   External File Interface
+261         *   DATE:      12DEC19
+262         *   DESC:      Generated SAS Datastep Code
+263         *   TEMPLATE SOURCE:  (None Specified.)
+264         ***********************************************************************/
+265            data _null_;
+266            %let _EFIERR_ = 0; /* set the ERROR detection macro variable */
+267            %let _EFIREC_ = 0;     /* clear export record count macro variable */
+268            file './q1_results/fe_est_log_avg_abs_dev.csv' delimiter=',' DSD DROPOVER lrecl=32767;
+269            if _n_ = 1 then        /* write column names or labels */
+270             do;
+8                                                          The SAS System                          19:05 Thursday, December 12, 2019
+
+271               put
+272                  "Effect"
+273               ','
+274                  "Condition"
+275               ','
+276                  "Estimate"
+277               ','
+278                  "StdErr"
+279               ','
+280                  "DF"
+281               ','
+282                  "tValue"
+283               ','
+284                  "Probt"
+285               ','
+286                  "Alpha"
+287               ','
+288                  "Lower"
+289               ','
+290                  "Upper"
+291               ;
+292             end;
+293           set  FE_EST_TOT_DIST   end=EFIEOD;
+294               format Effect $15. ;
+295               format Condition $8. ;
+296               format Estimate d8.4 ;
+297               format StdErr d8.4 ;
+298               format DF best4. ;
+299               format tValue 7.2 ;
+300               format Probt pvalue6.4 ;
+301               format Alpha best6. ;
+302               format Lower d8.4 ;
+303               format Upper d8.4 ;
+304             do;
+305               EFIOUT + 1;
+306               put Effect $ @;
+307               put Condition $ @;
+308               put Estimate @;
+309               put StdErr @;
+310               put DF @;
+311               put tValue @;
+312               put Probt @;
+313               put Alpha @;
+314               put Lower @;
+315               put Upper ;
+316               ;
+317             end;
+318            if _ERROR_ then call symputx('_EFIERR_',1);  /* set ERROR detection macro variable */
+319            if EFIEOD then call symputx('_EFIREC_',EFIOUT);
+320            run;
+
+NOTE: The file './q1_results/fe_est_log_avg_abs_dev.csv' is:
+      Filename=/afs/umich.edu/user/j/b/jbhender/github/ps506/F19/ps6/q1_results/fe_est_log_avg_abs_dev.csv,
+      Owner Name=jbhender,Group Name=wheel,
+      Access Permission=-rw-r--r--,
+      Last Modified=12Dec2019:19:05:13
+
+NOTE: 4 records were written to the file './q1_results/fe_est_log_avg_abs_dev.csv'.
+9                                                          The SAS System                          19:05 Thursday, December 12, 2019
+
+      The minimum record length was 26.
+      The maximum record length was 67.
+NOTE: There were 3 observations read from the data set WORK.FE_EST_TOT_DIST.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.01 seconds
+      
+
+3 records created in ./q1_results/fe_est_log_avg_abs_dev.csv from FE_EST_TOT_DIST.
+  
+  
+NOTE: "./q1_results/fe_est_log_avg_abs_dev.csv" file was successfully created.
+NOTE: PROCEDURE EXPORT used (Total process time):
+      real time           0.06 seconds
+      cpu time            0.06 seconds
+      
+
+
+321         /**********************************************************************
+322         *   PRODUCT:   SAS
+323         *   VERSION:   9.4
+324         *   CREATOR:   External File Interface
+325         *   DATE:      12DEC19
+326         *   DESC:      Generated SAS Datastep Code
+327         *   TEMPLATE SOURCE:  (None Specified.)
+328         ***********************************************************************/
+329            data _null_;
+330            %let _EFIERR_ = 0; /* set the ERROR detection macro variable */
+331            %let _EFIREC_ = 0;     /* clear export record count macro variable */
+332            file './q1_results/re_var_log_avg_abs_dev.csv' delimiter=',' DSD DROPOVER lrecl=32767;
+333            if _n_ = 1 then        /* write column names or labels */
+334             do;
+335               put
+336                  "CovParm"
+337               ','
+338                  "Estimate"
+339               ','
+340                  "StdErr"
+341               ','
+342                  "ZValue"
+343               ','
+344                  "ProbZ"
+345               ;
+346             end;
+347           set  RE_VAR_TOT_DIST   end=EFIEOD;
+348               format CovParm $11. ;
+349               format Estimate d8.4 ;
+350               format StdErr d8.4 ;
+351               format ZValue 6.2 ;
+352               format ProbZ pvalue6.4 ;
+353             do;
+354               EFIOUT + 1;
+355               put CovParm $ @;
+356               put Estimate @;
+357               put StdErr @;
+358               put ZValue @;
+359               put ProbZ ;
+360               ;
+10                                                         The SAS System                          19:05 Thursday, December 12, 2019
+
+361             end;
+362            if _ERROR_ then call symputx('_EFIERR_',1);  /* set ERROR detection macro variable */
+363            if EFIEOD then call symputx('_EFIREC_',EFIOUT);
+364            run;
+
+NOTE: The file './q1_results/re_var_log_avg_abs_dev.csv' is:
+      Filename=/afs/umich.edu/user/j/b/jbhender/github/ps506/F19/ps6/q1_results/re_var_log_avg_abs_dev.csv,
+      Owner Name=jbhender,Group Name=wheel,
+      Access Permission=-rw-r--r--,
+      Last Modified=12Dec2019:19:05:13
+
+NOTE: 4 records were written to the file './q1_results/re_var_log_avg_abs_dev.csv'.
+      The minimum record length was 36.
+      The maximum record length was 37.
+NOTE: There were 3 observations read from the data set WORK.RE_VAR_TOT_DIST.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+3 records created in ./q1_results/re_var_log_avg_abs_dev.csv from RE_VAR_TOT_DIST.
+  
+  
+NOTE: "./q1_results/re_var_log_avg_abs_dev.csv" file was successfully created.
+NOTE: PROCEDURE EXPORT used (Total process time):
+      real time           0.08 seconds
+      cpu time            0.05 seconds
+      
+
+365        %fit_model(log_max_abs_dev)
+
+NOTE: Convergence criteria met.
+NOTE: The data set WORK.RE_VAR_TOT_DIST has 3 observations and 5 variables.
+NOTE: The data set WORK.FE_EST_TOT_DIST has 3 observations and 10 variables.
+NOTE: The PROCEDURE MIXED printed pages 9-12.
+NOTE: PROCEDURE MIXED used (Total process time):
+      real time           0.02 seconds
+      cpu time            0.02 seconds
+      
+
+
+366         /**********************************************************************
+367         *   PRODUCT:   SAS
+368         *   VERSION:   9.4
+369         *   CREATOR:   External File Interface
+370         *   DATE:      12DEC19
+371         *   DESC:      Generated SAS Datastep Code
+372         *   TEMPLATE SOURCE:  (None Specified.)
+373         ***********************************************************************/
+374            data _null_;
+375            %let _EFIERR_ = 0; /* set the ERROR detection macro variable */
+376            %let _EFIREC_ = 0;     /* clear export record count macro variable */
+377            file './q1_results/fe_est_log_max_abs_dev.csv' delimiter=',' DSD DROPOVER lrecl=32767;
+378            if _n_ = 1 then        /* write column names or labels */
+379             do;
+380               put
+381                  "Effect"
+382               ','
+11                                                         The SAS System                          19:05 Thursday, December 12, 2019
+
+383                  "Condition"
+384               ','
+385                  "Estimate"
+386               ','
+387                  "StdErr"
+388               ','
+389                  "DF"
+390               ','
+391                  "tValue"
+392               ','
+393                  "Probt"
+394               ','
+395                  "Alpha"
+396               ','
+397                  "Lower"
+398               ','
+399                  "Upper"
+400               ;
+401             end;
+402           set  FE_EST_TOT_DIST   end=EFIEOD;
+403               format Effect $15. ;
+404               format Condition $8. ;
+405               format Estimate d8.4 ;
+406               format StdErr d8.4 ;
+407               format DF best4. ;
+408               format tValue 7.2 ;
+409               format Probt pvalue6.4 ;
+410               format Alpha best6. ;
+411               format Lower d8.4 ;
+412               format Upper d8.4 ;
+413             do;
+414               EFIOUT + 1;
+415               put Effect $ @;
+416               put Condition $ @;
+417               put Estimate @;
+418               put StdErr @;
+419               put DF @;
+420               put tValue @;
+421               put Probt @;
+422               put Alpha @;
+423               put Lower @;
+424               put Upper ;
+425               ;
+426             end;
+427            if _ERROR_ then call symputx('_EFIERR_',1);  /* set ERROR detection macro variable */
+428            if EFIEOD then call symputx('_EFIREC_',EFIOUT);
+429            run;
+
+NOTE: The file './q1_results/fe_est_log_max_abs_dev.csv' is:
+      Filename=/afs/umich.edu/user/j/b/jbhender/github/ps506/F19/ps6/q1_results/fe_est_log_max_abs_dev.csv,
+      Owner Name=jbhender,Group Name=wheel,
+      Access Permission=-rw-r--r--,
+      Last Modified=12Dec2019:19:05:13
+
+NOTE: 4 records were written to the file './q1_results/fe_est_log_max_abs_dev.csv'.
+      The minimum record length was 26.
+      The maximum record length was 67.
+NOTE: There were 3 observations read from the data set WORK.FE_EST_TOT_DIST.
+12                                                         The SAS System                          19:05 Thursday, December 12, 2019
+
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+3 records created in ./q1_results/fe_est_log_max_abs_dev.csv from FE_EST_TOT_DIST.
+  
+  
+NOTE: "./q1_results/fe_est_log_max_abs_dev.csv" file was successfully created.
+NOTE: PROCEDURE EXPORT used (Total process time):
+      real time           0.06 seconds
+      cpu time            0.05 seconds
+      
+
+
+430         /**********************************************************************
+431         *   PRODUCT:   SAS
+432         *   VERSION:   9.4
+433         *   CREATOR:   External File Interface
+434         *   DATE:      12DEC19
+435         *   DESC:      Generated SAS Datastep Code
+436         *   TEMPLATE SOURCE:  (None Specified.)
+437         ***********************************************************************/
+438            data _null_;
+439            %let _EFIERR_ = 0; /* set the ERROR detection macro variable */
+440            %let _EFIREC_ = 0;     /* clear export record count macro variable */
+441            file './q1_results/re_var_log_max_abs_dev.csv' delimiter=',' DSD DROPOVER lrecl=32767;
+442            if _n_ = 1 then        /* write column names or labels */
+443             do;
+444               put
+445                  "CovParm"
+446               ','
+447                  "Estimate"
+448               ','
+449                  "StdErr"
+450               ','
+451                  "ZValue"
+452               ','
+453                  "ProbZ"
+454               ;
+455             end;
+456           set  RE_VAR_TOT_DIST   end=EFIEOD;
+457               format CovParm $11. ;
+458               format Estimate d8.4 ;
+459               format StdErr d8.4 ;
+460               format ZValue 6.2 ;
+461               format ProbZ pvalue6.4 ;
+462             do;
+463               EFIOUT + 1;
+464               put CovParm $ @;
+465               put Estimate @;
+466               put StdErr @;
+467               put ZValue @;
+468               put ProbZ ;
+469               ;
+470             end;
+471            if _ERROR_ then call symputx('_EFIERR_',1);  /* set ERROR detection macro variable */
+472            if EFIEOD then call symputx('_EFIREC_',EFIOUT);
+13                                                         The SAS System                          19:05 Thursday, December 12, 2019
+
+473            run;
+
+NOTE: The file './q1_results/re_var_log_max_abs_dev.csv' is:
+      Filename=/afs/umich.edu/user/j/b/jbhender/github/ps506/F19/ps6/q1_results/re_var_log_max_abs_dev.csv,
+      Owner Name=jbhender,Group Name=wheel,
+      Access Permission=-rw-r--r--,
+      Last Modified=12Dec2019:19:05:13
+
+NOTE: 4 records were written to the file './q1_results/re_var_log_max_abs_dev.csv'.
+      The minimum record length was 36.
+      The maximum record length was 37.
+NOTE: There were 3 observations read from the data set WORK.RE_VAR_TOT_DIST.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.00 seconds
+      
+
+3 records created in ./q1_results/re_var_log_max_abs_dev.csv from RE_VAR_TOT_DIST.
+  
+  
+NOTE: "./q1_results/re_var_log_max_abs_dev.csv" file was successfully created.
+NOTE: PROCEDURE EXPORT used (Total process time):
+      real time           0.08 seconds
+      cpu time            0.05 seconds
+      
+
+474        %fit_model(log_AUC)
+
+NOTE: 3 observations are not included because of missing values.
+NOTE: Convergence criteria met.
+NOTE: The data set WORK.RE_VAR_TOT_DIST has 3 observations and 5 variables.
+NOTE: The data set WORK.FE_EST_TOT_DIST has 3 observations and 10 variables.
+NOTE: The PROCEDURE MIXED printed pages 13-16.
+NOTE: PROCEDURE MIXED used (Total process time):
+      real time           0.01 seconds
+      cpu time            0.02 seconds
+      
+
+
+475         /**********************************************************************
+476         *   PRODUCT:   SAS
+477         *   VERSION:   9.4
+478         *   CREATOR:   External File Interface
+479         *   DATE:      12DEC19
+480         *   DESC:      Generated SAS Datastep Code
+481         *   TEMPLATE SOURCE:  (None Specified.)
+482         ***********************************************************************/
+483            data _null_;
+484            %let _EFIERR_ = 0; /* set the ERROR detection macro variable */
+485            %let _EFIREC_ = 0;     /* clear export record count macro variable */
+486            file './q1_results/fe_est_log_AUC.csv' delimiter=',' DSD DROPOVER lrecl=32767;
+487            if _n_ = 1 then        /* write column names or labels */
+488             do;
+489               put
+490                  "Effect"
+491               ','
+492                  "Condition"
+493               ','
+14                                                         The SAS System                          19:05 Thursday, December 12, 2019
+
+494                  "Estimate"
+495               ','
+496                  "StdErr"
+497               ','
+498                  "DF"
+499               ','
+500                  "tValue"
+501               ','
+502                  "Probt"
+503               ','
+504                  "Alpha"
+505               ','
+506                  "Lower"
+507               ','
+508                  "Upper"
+509               ;
+510             end;
+511           set  FE_EST_TOT_DIST   end=EFIEOD;
+512               format Effect $9. ;
+513               format Condition $8. ;
+514               format Estimate d8.4 ;
+515               format StdErr d8.4 ;
+516               format DF best4. ;
+517               format tValue 7.2 ;
+518               format Probt pvalue6.4 ;
+519               format Alpha best6. ;
+520               format Lower d8.4 ;
+521               format Upper d8.4 ;
+522             do;
+523               EFIOUT + 1;
+524               put Effect $ @;
+525               put Condition $ @;
+526               put Estimate @;
+527               put StdErr @;
+528               put DF @;
+529               put tValue @;
+530               put Probt @;
+531               put Alpha @;
+532               put Lower @;
+533               put Upper ;
+534               ;
+535             end;
+536            if _ERROR_ then call symputx('_EFIERR_',1);  /* set ERROR detection macro variable */
+537            if EFIEOD then call symputx('_EFIREC_',EFIOUT);
+538            run;
+
+NOTE: The file './q1_results/fe_est_log_AUC.csv' is:
+      Filename=/afs/umich.edu/user/j/b/jbhender/github/ps506/F19/ps6/q1_results/fe_est_log_AUC.csv,
+      Owner Name=jbhender,Group Name=wheel,
+      Access Permission=-rw-r--r--,
+      Last Modified=12Dec2019:19:05:14
+
+NOTE: 4 records were written to the file './q1_results/fe_est_log_AUC.csv'.
+      The minimum record length was 26.
+      The maximum record length was 67.
+NOTE: There were 3 observations read from the data set WORK.FE_EST_TOT_DIST.
+NOTE: DATA statement used (Total process time):
+      real time           0.01 seconds
+15                                                         The SAS System                          19:05 Thursday, December 12, 2019
+
+      cpu time            0.01 seconds
+      
+
+3 records created in ./q1_results/fe_est_log_AUC.csv from FE_EST_TOT_DIST.
+  
+  
+NOTE: "./q1_results/fe_est_log_AUC.csv" file was successfully created.
+NOTE: PROCEDURE EXPORT used (Total process time):
+      real time           0.06 seconds
+      cpu time            0.05 seconds
+      
+
+
+539         /**********************************************************************
+540         *   PRODUCT:   SAS
+541         *   VERSION:   9.4
+542         *   CREATOR:   External File Interface
+543         *   DATE:      12DEC19
+544         *   DESC:      Generated SAS Datastep Code
+545         *   TEMPLATE SOURCE:  (None Specified.)
+546         ***********************************************************************/
+547            data _null_;
+548            %let _EFIERR_ = 0; /* set the ERROR detection macro variable */
+549            %let _EFIREC_ = 0;     /* clear export record count macro variable */
+550            file './q1_results/re_var_log_AUC.csv' delimiter=',' DSD DROPOVER lrecl=32767;
+551            if _n_ = 1 then        /* write column names or labels */
+552             do;
+553               put
+554                  "CovParm"
+555               ','
+556                  "Estimate"
+557               ','
+558                  "StdErr"
+559               ','
+560                  "ZValue"
+561               ','
+562                  "ProbZ"
+563               ;
+564             end;
+565           set  RE_VAR_TOT_DIST   end=EFIEOD;
+566               format CovParm $11. ;
+567               format Estimate d8.4 ;
+568               format StdErr d8.4 ;
+569               format ZValue 6.2 ;
+570               format ProbZ pvalue6.4 ;
+571             do;
+572               EFIOUT + 1;
+573               put CovParm $ @;
+574               put Estimate @;
+575               put StdErr @;
+576               put ZValue @;
+577               put ProbZ ;
+578               ;
+579             end;
+580            if _ERROR_ then call symputx('_EFIERR_',1);  /* set ERROR detection macro variable */
+581            if EFIEOD then call symputx('_EFIREC_',EFIOUT);
+582            run;
+
+16                                                         The SAS System                          19:05 Thursday, December 12, 2019
+
+NOTE: The file './q1_results/re_var_log_AUC.csv' is:
+      Filename=/afs/umich.edu/user/j/b/jbhender/github/ps506/F19/ps6/q1_results/re_var_log_AUC.csv,
+      Owner Name=jbhender,Group Name=wheel,
+      Access Permission=-rw-r--r--,
+      Last Modified=12Dec2019:19:05:14
+
+NOTE: 4 records were written to the file './q1_results/re_var_log_AUC.csv'.
+      The minimum record length was 36.
+      The maximum record length was 37.
+NOTE: There were 3 observations read from the data set WORK.RE_VAR_TOT_DIST.
+NOTE: DATA statement used (Total process time):
+      real time           0.00 seconds
+      cpu time            0.01 seconds
+      
+
+3 records created in ./q1_results/re_var_log_AUC.csv from RE_VAR_TOT_DIST.
+  
+  
+NOTE: "./q1_results/re_var_log_AUC.csv" file was successfully created.
+NOTE: PROCEDURE EXPORT used (Total process time):
+      real time           0.06 seconds
+      cpu time            0.05 seconds
+      
+
+583        
+584        
+585        /* 80: ---------------------------------------------------------------------- */
+
+NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414
+NOTE: The SAS System used:
+      real time           1.13 seconds
+      cpu time            0.66 seconds
+      
