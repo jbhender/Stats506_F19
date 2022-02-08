@@ -23,7 +23,7 @@ iso_test = read_delim('./isolet5.data',
                        trim_ws = TRUE,
                        col_names = FALSE)
 
-# separate features from repsonse: --------------------------------------------
+# separate features from response: --------------------------------------------
 resp_col = which( sapply(iso_train, function(x) length(unique(x)) ) == 26 )
 resp = iso_train[[resp_col]] #? Why double brackets?
 
@@ -48,16 +48,19 @@ iso_train %>% filter( id > 60 & id <= 120) %>% nrow()
 iso_train %>% filter( id > 120 & id <= 120) %>% nrow()
 
 # separate out the training data
-Xtrain = as.matrix( iso_train[-resp_col] ) #? Why single brackets? 
+Xtrain = as.matrix( iso_train[1:resp_col] ) #? Why single brackets? 
 #dim(Xtrain); Xtrain[1:5,1:5]
+Xtest = as.matrix( iso_test[1:resp_col] )
+resp_test = as.matrix( iso_test[[resp_col]] )
+ytest = 1L * resp_test %in% vowels
 
 # simplify the task to distinguishing vowels or consonants: -------------------
 vowels = which( letters %in% c('a', 'e', 'i', 'o', 'u'))
 y = 1L * resp %in% vowels
-length(y)
+#length(y)
 
 # fit a test model to work out details: ---------------------------------------
-# ~10s to fit a model with ridge penaly (a = 0)
+# ~10s to fit a model with ridge penalty (a = 0)
 # ~40s to fit a model with lasso penalty (a = 1)
 system.time({
   model_prep = glmnet(x = Xtrain, 
@@ -66,7 +69,14 @@ system.time({
                       alpha = 0,
                       standardize = FALSE)
 })
+model_prep = cv.glmnet(x = Xtrain, 
+                       y = y, 
+                       family = 'binomial',  
+                       alpha = 0,
+                       standardize = FALSE)
 #names(model_prep)
+idx = which(model_prep$lambda == model_prep$lambda.min)
+
 
 # form predictions on the training data: --------------------------------------
 # Note, the coef method returns a matrix of coefficients, with each column
@@ -74,6 +84,10 @@ system.time({
 # dim( coef(model_prep) )
 beta_prep = coef(model_prep)
 yhat_prep = plogis( as.matrix( cbind(1, Xtrain) %*% beta_prep ) )
+
+yhat_test = plogis( as.matrix( cbind(1, Xtest) %*% beta_prep ) )
+fwrite( data.table(yhat = yhat_test[, 1], y = ytest), file = '~/github/Stats506_F20/problem_sets/isolet_restults.csv')
+table( yhat_test > 0.5, ytest)
 
 # classification error on training data: --------------------------------------
 error_prep = 1 - colMeans( {yhat_test > .5} == y )
@@ -112,13 +126,12 @@ for ( fold in 1:4 ) {
   yv = y[fold_ind]
   
   # Fit the model
-  models[[fold]] =
-    model_prep = glmnet(x = Xt, 
-                        y = yt, 
-                        family = 'binomial',  
-                        alpha = 1, 
-                        lambda = lambda
-                 )
+  models[[fold]] = glmnet(x = Xt, 
+                          y = yt, 
+                          family = 'binomial',  
+                          alpha = 1, 
+                          lambda = lambda
+                   )
   
   # Evaluate the model on the hold out data for each lambda
   yvhat = plogis( as.matrix( cbind(1, Xv) %*% coef(models[[fold]]) ) )

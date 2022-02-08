@@ -64,7 +64,7 @@ stopifnot( all( trans_to_origin( cbind(rnorm(3), rnorm(3), 1:3) )[1,] == 0 ) )
 compute_angle = function(xy){
   # compute the angle in radians a point (x, y) forms with the origin and the
   #   x axis. 
-  # inputs: xyt a length 2 numeric vector c(x, y)
+  # inputs: xy a length 2 numeric vector c(x, y)
   # outputs: an angle, in radians, between [-pi/2, pi/2] 
   # Note: an angle between [0, 2*pi] would make this and the next part easier.
   if ( xy[1] == 0 ) {

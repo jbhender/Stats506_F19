@@ -72,7 +72,7 @@ rmse = function(y, yhat) {
 }
 
 # Cycle through folds, using each in turn as the validation data and 
-# other for training: ---------------------------------------------------------
+# others for training: --------------------------------------------------------
 leave_out_rmse = list()
 for ( fold in unique(folds) ) {
     fit = glmnet(X_train[folds!=fold, ], Y_train[folds!=fold, ], 
